@@ -89,13 +89,15 @@ scene.add(ambientLight);
 const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
 dirLight.position.set(12, 20, 10);
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.set(1024, 1024);
+dirLight.shadow.mapSize.set(2048, 2048);
 dirLight.shadow.camera.near = 0.5;
 dirLight.shadow.camera.far = 60;
 dirLight.shadow.camera.left = -20;
 dirLight.shadow.camera.right = 20;
 dirLight.shadow.camera.top = 20;
 dirLight.shadow.camera.bottom = -20;
+dirLight.shadow.bias = -0.0005;
+dirLight.shadow.normalBias = 0.05;
 scene.add(dirLight);
 
 const pointLight = new THREE.PointLight(0x818cf8, 0.8, 50);
@@ -1072,7 +1074,7 @@ function render3DBarMesh(labels, values, shape = 'box') {
         mesh.position.set(xPos, h / 2, 0);
         if (shape === 'pyramid') mesh.rotation.y = Math.PI / 4;
         mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        mesh.receiveShadow = false;
         mesh.userData = { name: label, value: val, index: i, baseColor: color.clone(), baseY: h / 2 };
 
         scene.add(mesh);
@@ -1134,7 +1136,7 @@ function render3DRing(labels, values, innerRadius = 0) {
         const mesh = new THREE.Mesh(geometry, material);
         mesh.position.set(0, thickness, 0);
         mesh.castShadow = true;
-        mesh.receiveShadow = true;
+        mesh.receiveShadow = false;
 
         const midAngle = currentAngle + sliceAngle / 2;
         const labelRadius = outerRadius + 1.2;
@@ -1190,7 +1192,7 @@ function render3DArea(labels, values) {
     });
     const areaMesh = new THREE.Mesh(areaGeo, areaMat);
     areaMesh.position.set(0, 0, -depth / 2);
-    areaMesh.receiveShadow = true;
+    areaMesh.receiveShadow = false;
     areaMesh.castShadow = true;
     scene.add(areaMesh);
     extraVisuals.push(areaMesh);
@@ -1350,7 +1352,7 @@ function render3DSurface(labels, values) {
     const surfaceMesh = new THREE.Mesh(planeGeo, planeMat);
     surfaceMesh.rotation.x = -Math.PI / 2;
     surfaceMesh.position.set(0, 0, 0);
-    surfaceMesh.receiveShadow = true;
+    surfaceMesh.receiveShadow = false;
     surfaceMesh.castShadow = true;
     scene.add(surfaceMesh);
     extraVisuals.push(surfaceMesh);
