@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D 데이터 시각화 대시보드</title>
+    <!-- PWA 설정 (모바일 홈화면 앱) -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="3D시각화">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="icon" type="image/png" href="icon-192.png">
+
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <!-- 3D 뷰포트 -->
+    <div id="canvas-container"></div>
+
+    <!-- 3D → 2D 동기화 플로팅 툴팁 (호버 시 표시) -->
+    <div id="hover-tooltip" class="tooltip-3d" style="display:none;">
+        <div id="tooltip-name"></div>
+        <div id="tooltip-value"></div>
+    </div>
+
+    <!-- 3D → 2D 동기화 라벨 컨테이너 -->
+    <div id="label-layer"></div>
+
+    <!-- 상단 컨트롤 바 -->
+    <header id="top-bar">
+        <div class="top-bar-left">
+            <h1>📊 3D 데이터 시각화</h1>
+            <span id="status-indicator" class="status offline">● 대기 중</span>
+            <button id="gpu-engine-badge" class="gpu-badge" title="GPU 가속 엔진 상태 (클릭하여 사양 확인)">
+                <span class="gpu-dot"></span>
+                <span id="gpu-engine-text">⚡ Vulkan / WebGPU</span>
+            </button>
+        </div>
+        <div class="top-bar-right">
+            <button id="btn-auto-rotate" title="3D 자동 회전 뷰">🔄 회전</button>
+            <button id="btn-reset-camera" title="카메라 리셋">🎥 기본</button>
+            <button id="btn-iso-view" title="대각 입체 뷰">📐 아이소</button>
+            <button id="btn-top-view" title="위에서 보기">⬆ 탑뷰</button>
+            <button id="btn-front-view" title="정면 보기">◻ 정면</button>
+            <button id="btn-toggle-grid" title="그리드 토글">▦ 그리드</button>
+            <button id="btn-toggle-labels" title="라벨 토글">🏷 라벨</button>
+            <button id="btn-screenshot" title="현재 3D 화면 고화질 PNG 이미지로 저장">📸 캡처</button>
+            <button id="btn-fullscreen" title="전체화면">⛶</button>
+            <button id="btn-toggle-menu" class="menu-toggle-btn" title="대시보드 메뉴 열기/닫기">☰ 메뉴</button>
+        </div>
+    </header>
+
+    <!-- 독립 파일 업로드 패널 (메뉴창 밖 분리) -->
+    <div id="upload-panel" class="upload-card">
+        <div class="upload-card-top">
+            <span class="upload-badge">📂 데이터 소스</span>
+            <span id="file-name" class="file-name-text">파일을 선택해주세요</span>
+        </div>
+        <div class="upload-btn-group">
+            <label for="csv-upload" class="upload-btn">
+                📁 CSV 파일 선택
+                <input type="file" id="csv-upload" accept=".csv">
+            </label>
+            <button type="button" id="btn-load-sample" class="sample-btn" title="기본 샘플 데이터 즉시 불러오기">
+                📋 샘플
+            </button>
+            <button type="button" id="btn-gpu-benchmark" class="sample-btn benchmark-btn" title="Vulkan/WebGPU 저수준 가속 성능 체감 (대량 데이터 1,000건 렌더링)">
+                ⚡ GPU 벤치
+            </button>
+        </div>
+    </div>
+
+    <!-- 우측 메뉴 패널 (업로드 제외한 모든 상세/분석/시각화/필터/환경 설정 포함) -->
+    <aside id="menu-panel" class="menu-drawer open" tabindex="0" title="선택/호버 시 마우스 휠 및 터치로 스크롤 가능">
+        <div class="menu-header">
+            <div class="menu-header-left">
+                <h3>⚙️ 대시보드 메뉴</h3>
+            </div>
+            <div class="menu-header-actions">
+                <button type="button" id="btn-scroll-top" class="menu-nav-btn" title="메뉴 최상단으로 스크롤">⬆</button>
+                <button type="button" id="btn-scroll-bottom" class="menu-nav-btn" title="메뉴 최하단으로 스크롤">⬇</button>
+                <button type="button" id="btn-close-menu" class="close-menu-btn" title="메뉴 닫기">✕</button>
+            </div>
+        </div>
+
+        <div class="menu-content">
+            <!-- 1. 선택된 개체 상세 카드 섹션 -->
+            <div class="accordion-item" id="detail-card-section" style="display:none;">
+                <div class="accordion-header" data-target="detail-card-body">
+                    <span class="header-title">📌 선택된 항목 상세</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <div class="accordion-body" id="detail-card-body">
+                    <div id="detail-card">
+                        <div id="detail-name"></div>
+                        <div id="detail-stats"></div>
+                        <div id="detail-mini-chart-container">
+                            <canvas id="detail-mini-chart" height="120"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. 분석 결과 섹션 -->
+            <div class="accordion-item" id="analysis-section" style="display:none;">
+                <div class="accordion-header" data-target="analysis-body">
+                    <span class="header-title">📋 데이터 통계 분석</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <div class="accordion-body" id="analysis-body">
+                    <div id="analysis-result"></div>
+                </div>
+            </div>
+
+            <!-- 3. 시각화 설정 섹션 -->
+            <div class="accordion-item active" id="viz-section" style="display:none;">
+                <div class="accordion-header active" data-target="viz-body">
+                    <span class="header-title">🎨 시각화 설정 & 추천</span>
+                    <span class="chevron">▴</span>
+                </div>
+                <div class="accordion-body open" id="viz-body">
+                    <!-- 추천 시각화 자동 적용 안내 -->
+                    <div class="auto-recommend-box">
+                        <div class="recommend-toggle-row">
+                            <label for="auto-recommend-toggle" class="recommend-toggle-label">
+                                <input type="checkbox" id="auto-recommend-toggle" checked>
+                                <span>🤖 추천 자동 적용</span>
+                            </label>
+                            <span id="auto-recommend-status-badge" class="badge-auto-on">ON (자동)</span>
+                        </div>
+                        <div id="applied-recommend-notice" class="applied-notice-text">
+                            선택한 데이터에 맞춰 3D 및 2D 시각화가 최적으로 자동 적용됩니다.
+                        </div>
+                        <button type="button" id="btn-force-recommend" class="btn-rec-action">
+                            ✨ 추천 시각화 즉시 적용
+                        </button>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="x-axis-select"><strong>X축 (라벨/기준):</strong></label>
+                        <select id="x-axis-select"></select>
+                    </div>
+                    <div class="control-group">
+                        <label for="y-axis-select"><strong>Y축 (수치/지표):</strong></label>
+                        <select id="y-axis-select"></select>
+                    </div>
+                    <div class="control-group">
+                        <label for="bar-style"><strong>🧊 3D 시각화 스타일:</strong></label>
+                        <select id="bar-style">
+                            <option value="auto">🤖 최적 3D 자동 분석 추천</option>
+                            <option value="cylinder">● 3D 원기둥 타워 막대 (매출/수량)</option>
+                            <option value="pyramid">🔺 3D 피라미드 타워 (비용/손실)</option>
+                            <option value="donut">🍩 3D 도넛 링 차트 (이익/마진)</option>
+                            <option value="pie">🥧 3D 파이 슬라이스 (원형 비중)</option>
+                            <option value="box">📊 3D 입체 직육면체 막대 (표준)</option>
+                            <option value="line">📈 3D 입체 튜브 라인 (추세선)</option>
+                            <option value="area">🏔️ 3D 산악형 면적 차트 (볼륨)</option>
+                            <option value="scatter">🌐 3D 입체 산점도 (공간 좌표)</option>
+                            <option value="surface">🌊 3D 곡면 서피스 (지형 맵)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label for="chart-type-select"><strong>📊 2D 보조 차트:</strong></label>
+                        <select id="chart-type-select">
+                            <option value="auto">🤖 최적 2D 자동 추천</option>
+                            <option value="bar">📊 세로 막대 (규모 비교)</option>
+                            <option value="horizontalBar">📊 가로 막대 (다항목)</option>
+                            <option value="doughnut">🍩 도넛 차트 (구성비)</option>
+                            <option value="pie">🥧 파이 차트 (점유율)</option>
+                            <option value="polarArea">🎯 폴라 에어리어 (성과)</option>
+                            <option value="line">📈 꺾은선 (시계열 추세)</option>
+                            <option value="scatter">⚬ 산점도 (수치 상관)</option>
+                            <option value="radar">🕸 레이더 차트 (다면 평가)</option>
+                        </select>
+                    </div>
+                    <button id="apply-btn" class="apply-btn">✨ 시각화 수동 적용</button>
+                </div>
+            </div>
+
+            <!-- 4. 필터링 섹션 -->
+            <div class="accordion-item" id="filter-section" style="display:none;">
+                <div class="accordion-header" data-target="filter-body">
+                    <span class="header-title">🔍 데이터 필터링 & 정렬</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <div class="accordion-body" id="filter-body">
+                    <!-- 필터 요약 배지 -->
+                    <div id="filter-summary-badge" class="filter-count-badge">📊 표시: 전체 데이터</div>
+
+                    <!-- 1. 키워드 검색 필터 -->
+                    <div class="control-group">
+                        <label for="filter-keyword">🔎 항목명 / 라벨 실시간 검색:</label>
+                        <input type="text" id="filter-keyword" placeholder="검색할 항목명 입력..." style="background: rgba(15, 23, 42, 0.75);">
+                    </div>
+
+                    <!-- 2. 대용량 데이터 표시 개수 제한 (Top N) -->
+                    <div class="control-group">
+                        <label for="limit-select"><strong>📊 표시 데이터 개수 제한 (대용량 최적화):</strong></label>
+                        <select id="limit-select" style="border: 1.5px solid #10b981; font-weight: 600;">
+                            <option value="30">🔥 상위 30개 (추천, 최적 시인성)</option>
+                            <option value="10">🥇 상위 10개 (핵심 집중)</option>
+                            <option value="20">🎯 상위 20개</option>
+                            <option value="50">📊 상위 50개</option>
+                            <option value="100">📈 상위 100개</option>
+                            <option value="all">🌐 전체 데이터 모두 표시</option>
+                        </select>
+                    </div>
+
+                    <!-- 3. 빠른 퀵 필터 버튼 -->
+                    <div class="control-group">
+                        <label>⚡ 빠른 퀵 필터:</label>
+                        <div class="quick-filter-group" style="display:flex; flex-wrap:wrap; gap:4px;">
+                            <button type="button" id="btn-filter-top10" class="small-btn">🥇 상위 10개</button>
+                            <button type="button" id="btn-filter-above-avg" class="small-btn">📈 평균 이상</button>
+                            <button type="button" id="btn-filter-top20pct" class="small-btn">💎 상위 20%</button>
+                            <button type="button" id="btn-filter-all" class="small-btn" style="color:#f87171;">🔄 초기화</button>
+                        </div>
+                    </div>
+
+                    <!-- 4. 카테고리 개별 필터 -->
+                    <div class="control-group">
+                        <label for="data-filter">카테고리 개별 필터:</label>
+                        <select id="data-filter">
+                            <option value="all">전체 보기</option>
+                        </select>
+                    </div>
+
+                    <!-- 5. 수치 범위 필터 -->
+                    <div class="control-group">
+                        <label for="range-min">수치 범위 필터:</label>
+                        <div class="range-row">
+                            <input type="number" id="range-min" placeholder="최소">
+                            <span>~</span>
+                            <input type="number" id="range-max" placeholder="최대">
+                            <button id="btn-apply-range" class="small-btn">적용</button>
+                        </div>
+                    </div>
+
+                    <!-- 6. 정렬 기준 -->
+                    <div class="control-group">
+                        <label for="sort-select">정렬 기준:</label>
+                        <select id="sort-select">
+                            <option value="none">원본 순서</option>
+                            <option value="desc">내림차순 (큰 값부터)</option>
+                            <option value="asc">오름차순 (작은 값부터)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. 3D 환경 설정 섹션 -->
+            <div class="accordion-item" id="settings-section">
+                <div class="accordion-header" data-target="settings-body">
+                    <span class="header-title">⚙️ 3D 환경 & 조명 설정</span>
+                    <span class="chevron">▾</span>
+                </div>
+                <div class="accordion-body" id="settings-body">
+                    <div class="control-group">
+                        <label for="ambient-intensity">환경광 강도:</label>
+                        <input type="range" id="ambient-intensity" min="0" max="2" step="0.1" value="0.8">
+                    </div>
+                    <div class="control-group">
+                        <label for="point-intensity">포인트 라이트:</label>
+                        <input type="range" id="point-intensity" min="0" max="3" step="0.1" value="0.8">
+                    </div>
+                    <div class="control-group">
+                        <label for="camera-fov">카메라 FOV:</label>
+                        <input type="range" id="camera-fov" min="30" max="100" step="1" value="55">
+                    </div>
+                    <div class="control-group">
+                        <label for="bg-color">배경색:</label>
+                        <input type="color" id="bg-color" value="#f1f5f9">
+                    </div>
+                    <div class="control-group">
+                        <label for="color-theme-select">🎨 3D 색상 테마:</label>
+                        <select id="color-theme-select">
+                            <option value="vibrant">🌈 비비드 레인보우</option>
+                            <option value="ocean">🌊 오션 블루/시안</option>
+                            <option value="neon">⚡ 네온 사이버펑크</option>
+                            <option value="sunset">🌅 선셋 오렌지/핑크</option>
+                            <option value="emerald">🌿 에메랄드 그린</option>
+                            <option value="gold">🥇 골드 & 럭셔리</option>
+                            <option value="pastel">🌸 파스텔 마카롱</option>
+                            <option value="fire">🔥 파이어 & 플레임</option>
+                            <option value="aurora">🌌 오로라 판타지</option>
+                            <option value="monochrome">🖤 모노크롬 슬레이트</option>
+                            <option value="custom">✏️ 직접 색상 코드 지정 (HEX)</option>
+                        </select>
+                    </div>
+                    <div class="control-group" id="custom-color-group" style="display:none; background: rgba(99,102,241,0.12); padding: 10px 12px; border-radius: 8px; border: 1.5px solid rgba(99,102,241,0.35); margin-top: 4px;">
+                        <label for="custom-theme-color-picker" style="color: #a5b4fc; font-weight:700; font-size:12px;">🎨 색상 코드 (HEX) 직접 지정:</label>
+                        <div class="range-row" style="margin-top: 6px;">
+                            <input type="color" id="custom-theme-color-picker" value="#6366f1" title="색상 피커로 선택">
+                            <input type="text" id="custom-theme-color-code" value="#6366F1" placeholder="#6366F1" maxlength="7" style="width: 105px; text-transform: uppercase; font-family: monospace; font-weight: 700; letter-spacing: 0.5px; text-align: center; border: 1.5px solid #818cf8;">
+                            <span style="font-size: 11px; color: #94a3b8;">색상 코드</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 2D 차트 패널 (좌측 하단) -->
+    <div id="chart-panel" style="display:none;">
+        <div id="chart-header">
+            <h3 id="chart-title">2D 보조 분석 차트</h3>
+            <div>
+                <button id="chart-maximize-btn" class="panel-ctrl-btn" title="확대">⛶</button>
+                <button id="chart-close-btn" class="panel-ctrl-btn close" title="닫기">✕</button>
+            </div>
+        </div>
+        <div id="chart-wrapper">
+            <canvas id="chart-2d"></canvas>
+        </div>
+        <div id="data-table-container">
+            <h4>📄 데이터 표 <span id="row-count"></span></h4>
+            <div id="data-table-scroll">
+                <table id="data-table"></table>
+            </div>
+        </div>
+    </div>
+
+    <!-- GPU 엔진 정보 팝업 모달 -->
+    <div id="gpu-info-modal" class="modal-backdrop" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <span class="modal-icon">⚡</span>
+                    <h3>차세대 GPU 렌더링 엔진 정보</h3>
+                </div>
+                <button id="btn-close-gpu-modal" class="modal-close-btn" title="닫기">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="gpu-info-grid">
+                    <div class="gpu-info-row">
+                        <span class="info-label">그래픽스 파이프라인</span>
+                        <span class="info-val highlight" id="modal-gpu-api">Vulkan / WebGPU</span>
+                    </div>
+                    <div class="gpu-info-row">
+                        <span class="info-label">GPU 장치명</span>
+                        <span class="info-val" id="modal-gpu-device">하드웨어 감지 중...</span>
+                    </div>
+                    <div class="gpu-info-row">
+                        <span class="info-label">제조사 / 공급자</span>
+                        <span class="info-val" id="modal-gpu-vendor">분석 중...</span>
+                    </div>
+                    <div class="gpu-info-row">
+                        <span class="info-label">아키텍처 모드</span>
+                        <span class="info-val" id="modal-gpu-architecture">WGSL Low-level Pipeline</span>
+                    </div>
+                    <div class="gpu-info-row">
+                        <span class="info-label">하드웨어 기능 지원수</span>
+                        <span class="info-val" id="modal-gpu-features">-</span>
+                    </div>
+                    <div class="gpu-info-row">
+                        <span class="info-label">실시간 렌더링 성능</span>
+                        <span class="info-val performance" id="modal-gpu-fps">60 FPS (16.6 ms)</span>
+                    </div>
+                </div>
+                <div class="gpu-tech-note">
+                    <div class="note-title">💡 Vulkan & WebGPU 차세대 가속 원리</div>
+                    <p>현재 애플리케이션은 최신 <strong>WebGPU</strong> 표준을 통해 Windows의 <strong>Vulkan / Direct3D 12</strong> 저수준 GPU 파이프라인과 직접 통신합니다. 기존 WebGL 대비 드라이버 오버헤드를 대폭 줄이고, 수만 개의 3D 데이터 오브젝트도 지연 없이 60fps 이상으로 부드럽게 렌더링합니다.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="main.js"></script>
+    <script>
+        // PWA 서비스 워커 등록
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => {
+                    console.log('SW Registration failed: ', err);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
