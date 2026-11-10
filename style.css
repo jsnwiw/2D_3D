@@ -176,39 +176,48 @@ body, html {
    =============================== */
 .upload-card {
     position: absolute; top: 62px; left: 16px;
-    z-index: 18; width: 310px;
-    background: rgba(15, 23, 42, 0.92);
+    z-index: 18; width: 360px;
+    max-width: calc(100vw - 32px);
+    box-sizing: border-box;
+    background: rgba(15, 23, 42, 0.94);
     backdrop-filter: blur(14px);
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    border: 1px solid rgba(99, 102, 241, 0.35);
     border-radius: 12px;
     padding: 12px 14px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     transition: all 0.3s ease;
+    overflow: hidden;
 }
 .upload-card-top {
     display: flex; justify-content: space-between; align-items: center;
     margin-bottom: 10px; gap: 8px;
+    width: 100%; box-sizing: border-box;
 }
 .upload-badge {
     font-size: 11px; font-weight: 700; color: #a5b4fc;
     display: flex; align-items: center; gap: 4px;
+    white-space: nowrap; flex-shrink: 0;
 }
 .file-name-text {
     font-size: 11px; color: #94a3b8;
- text-overflow: ellipsis; white-space: nowrap;
-    max-width: 170px; text-align: right;
+    text-overflow: ellipsis; white-space: nowrap;
+    overflow: hidden;
+    max-width: 190px; text-align: right;
 }
 .upload-btn-group {
-    display: flex; gap: 8px;
+    display: flex; gap: 6px;
+    width: 100%; box-sizing: border-box;
 }
 .upload-btn {
     flex: 1.2;
     background: linear-gradient(135deg, #4f46e5, #6366f1);
-    color: white; padding: 8px 10px; border-radius: 8px;
-    text-align: center; font-size: 12px; font-weight: 700;
+    color: white; padding: 7px 6px; border-radius: 8px;
+    text-align: center; font-size: 11px; font-weight: 700;
     cursor: pointer; transition: all 0.25s;
     border: 1px solid rgba(129, 140, 248, 0.4);
     display: flex; align-items: center; justify-content: center; gap: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    min-width: 0; box-sizing: border-box;
 }
 .upload-btn:hover {
     background: linear-gradient(135deg, #6366f1, #818cf8);
@@ -220,11 +229,13 @@ body, html {
 .sample-btn {
     flex: 1;
     background: rgba(30, 41, 59, 0.9);
-    color: #e0e7ff; padding: 8px 10px; border-radius: 8px;
-    text-align: center; font-size: 12px; font-weight: 700;
+    color: #e0e7ff; padding: 7px 6px; border-radius: 8px;
+    text-align: center; font-size: 11px; font-weight: 700;
     cursor: pointer; transition: all 0.25s;
     border: 1px solid rgba(99, 102, 241, 0.3);
     display: flex; align-items: center; justify-content: center; gap: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    min-width: 0; box-sizing: border-box;
 }
 .sample-btn:hover {
     background: rgba(99, 102, 241, 0.25);
@@ -240,6 +251,40 @@ body, html {
     border-color: #34d399 !important;
     box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
     color: #fff !important;
+}
+
+/* 인코딩 선택창 (너비 초과 튀어나옴 완벽 방지) */
+.upload-encoding-row {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.upload-encoding-row label {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.upload-encoding-row select {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 5px 8px;
+    font-size: 11px;
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    border-radius: 6px;
+    color: #e2e8f0;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ===============================
