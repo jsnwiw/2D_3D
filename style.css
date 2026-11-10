@@ -1336,3 +1336,73 @@ input[type="color"] {
     color: #334155;
     font-weight: 700;
 }
+/* ===============================
+    Mobile responsive adjustments
+    =============================== */
+@media (max-width: 600px) {
+    /* Top bar: stack items vertically */
+    #top-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        height: auto;
+        padding: 8px 12px;
+    }
+    .top-bar-left, .top-bar-right {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .top-bar-right {
+        overflow-x: visible;
+    }
+    /* Upload card: full width */
+    .upload-card {
+        left: 8px;
+        right: 8px;
+        width: auto;
+        max-width: calc(100vw - 16px);
+    }
+    .upload-btn-group {
+        flex-direction: column;
+        gap: 8px;
+    }
+    /* Menu drawer: full screen on mobile */
+    .menu-drawer {
+        width: 100vw;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: 0;
+    }
+    .menu-header {
+        padding: 8px 12px;
+    }
+    .menu-content {
+        padding: 8px 12px;
+    }
+    /* Control groups inside settings: stack vertically */
+    .control-group {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+    }
+    .control-group label, .control-group input, .control-group select {
+        width: 100%;
+        margin-bottom: 4px;
+    }
+    .control-group input[type="range"], .control-group input[type="color"] {
+        padding: 0;
+    }
+    .control-group input[type="range"] {
+        max-width: 100%;
+    }
+    /* Accordion items: ensure they fit */
+    .accordion-item {
+        width: 100%;
+    }
+    /* Tooltip font size for readability */
+    .tooltip-3d {
+        font-size: 12px;
+    }
+}
