@@ -56,7 +56,7 @@ if ('gpu' in navigator) {
 }
 
 if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
     gpuEngineState.isWebGPU = false;
     gpuEngineState.backendName = 'WebGL 2.0 (호환성 세이프 모드)';
     gpuEngineState.gpuName = '시스템 기본 그래픽 가속 장치';
@@ -199,6 +199,29 @@ const modalGpuArchitecture = $('modal-gpu-architecture');
 const modalGpuFeatures = $('modal-gpu-features');
 const modalGpuFps = $('modal-gpu-fps');
 
+// 타임라인 플레이어 & 토스트 DOM 참조
+const btnToggleTimeline = $('btn-toggle-timeline');
+const timePlayerBar = $('time-player-bar');
+const btnTimePlay = $('btn-time-play');
+const btnTimePrev = $('btn-time-prev');
+const btnTimeNext = $('btn-time-next');
+const timeSliderRange = $('time-slider-range');
+const timeSpeedSelect = $('time-speed-select');
+const timeStepBadge = $('time-step-badge');
+const timeColName = $('time-col-name');
+const btnCloseTimePlayer = $('btn-close-time-player');
+const toastNotification = $('toast-notification');
+
+function showToast(message, duration = 3200) {
+    if (!toastNotification) return;
+    toastNotification.innerHTML = message;
+    toastNotification.style.display = 'flex';
+    clearTimeout(toastNotification._timer);
+    toastNotification._timer = setTimeout(() => {
+        toastNotification.style.display = 'none';
+    }, duration);
+}
+
 // GPU 엔진 뱃지 UI 갱신 함수
 function updateGpuBadgeUI() {
     if (!gpuEngineBadge || !gpuEngineText) return;
@@ -296,17 +319,33 @@ $('btn-fullscreen').addEventListener('click', () => {
     else document.exitFullscreen();
 });
 
-// 📸 3D 씬 고화질 스크린샷 캡처 다운로드
+// 📸 3D 씬 고화질 스크린샷 캡처 다운로드 (고해상도 PNG 출력)
 $('btn-screenshot')?.addEventListener('click', () => {
+    hideTooltip();
     renderer.render(scene, camera);
     const canvas = renderer.domElement;
     const link = document.createElement('a');
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     const timeStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    link.download = `3D_Data_Scene_${timeStr}.png`;
+    const filename = `3D_시각화_${timeStr}.png`;
+    link.download = filename;
     link.href = canvas.toDataURL('image/png');
     link.click();
+    showToast(`📸 <strong>3D 고해상도 이미지</strong>가 저장되었습니다! (<code>${filename}</code>)`);
+});
+
+// ⏳ 시계열/다차원 타임라인 플레이어 토글
+btnToggleTimeline?.addEventListener('click', () => {
+    if (!parsedData || !analysisResult || analysisResult.numericCols.length === 0) {
+        showToast('⚠️ 재생할 수치 컬럼 데이터가 없습니다. 먼저 CSV를 업로드해 주세요.');
+        return;
+    }
+    if (timePlayerBar.style.display === 'none') {
+        openTimePlayer();
+    } else {
+        closeTimePlayer();
+    }
 });
 
 // 키보드 단축키 지원 (Space: 회전, R: 기본뷰, G: 그리드, L: 라벨, M: 메뉴, ESC: 닫기)
@@ -766,7 +805,239 @@ function displayAnalysis(analysis) {
 
     html += `<div id="dynamic-recommend-box"></div>`;
     analysisResultEl.innerHTML = html;
+    renderAIInsights(analysis);
 }
+
+// ════════════════════════════════════════════════════════════
+// 8-1. AI 인사이트 & 이상치(Anomaly) 자동 브리핑 엔진
+// ════════════════════════════════════════════════════════════
+function renderAIInsights(analysis) {
+    const box = $('ai-insight-box');
+    if (!box || !parsedData || !yAxisSelect) return;
+
+    const yIdx = parseInt(yAxisSelect.value);
+    const xIdx = parseInt(xAxisSelect.value);
+    if (isNaN(yIdx) || isNaN(xIdx) || !parsedData.headers[yIdx]) return;
+
+    const yColName = parsedData.headers[yIdx];
+    const rows = parsedData.rows;
+    const items = rows.map((r, i) => ({
+        label: String(r[xIdx] || `항목 #${i + 1}`),
+        value: parseFloat(r[yIdx]) || 0,
+        idx: i
+    })).filter(item => !isNaN(item.value));
+
+    if (items.length === 0) {
+        box.innerHTML = '';
+        return;
+    }
+
+    // 1. 기본 통계 지표 산출
+    const values = items.map(d => d.value).sort((a, b) => a - b);
+    const count = values.length;
+    const sum = values.reduce((a, b) => a + b, 0);
+    const mean = sum / count;
+    const median = count % 2 === 0 ? (values[count / 2 - 1] + values[count / 2]) / 2 : values[Math.floor(count / 2)];
+
+    // 2. IQR 기반 이상치(Outlier) 자동 탐지 (Q1 - 1.5*IQR, Q3 + 1.5*IQR)
+    const q1 = values[Math.floor(count * 0.25)];
+    const q3 = values[Math.floor(count * 0.75)];
+    const iqr = Math.max(q3 - q1, 0.0001);
+    const upperLimit = q3 + 1.5 * iqr;
+    const lowerLimit = q1 - 1.5 * iqr;
+
+    const outliers = items.filter(d => d.value > upperLimit || d.value < lowerLimit);
+
+    // 3. 파레토 법칙(80/20 법칙) 집중도 계산
+    const sortedDesc = [...items].sort((a, b) => b.value - a.value);
+    const top20Count = Math.max(1, Math.round(count * 0.2));
+    const top20Sum = sortedDesc.slice(0, top20Count).reduce((acc, cur) => acc + cur.value, 0);
+    const top20Share = sum > 0 ? ((top20Sum / sum) * 100).toFixed(1) : 0;
+
+    // 4. 변동계수 (CV)
+    const variance = values.reduce((acc, v) => acc + Math.pow(v - mean, 2), 0) / count;
+    const stddev = Math.sqrt(variance);
+    const cv = mean > 0 ? (stddev / mean) : 0;
+
+    let cvDesc = '항목 간 편차가 적당하며 안정적인 분포입니다.';
+    if (cv < 0.3) cvDesc = '모든 항목이 고르게 평준화되어 차이가 적습니다.';
+    else if (cv > 0.8) cvDesc = '항목 간 격차가 극심하여 상위 항목에 쏠려 있습니다.';
+
+    // HTML 구성
+    let html = `
+    <div class="ai-insight-header">
+        <div class="ai-insight-title">
+            <span>✨ AI 실시간 데이터 인사이트</span>
+        </div>
+        <span class="ai-insight-badge">통계 분석 완료</span>
+    </div>
+    <div class="ai-insight-list">
+        <div class="ai-insight-item highlight">
+            📌 <strong>지표 요약:</strong> [${yColName}] 총합 <strong>${fmt(sum)}</strong>, 평균 <strong>${fmt(Math.round(mean))}</strong> (중앙값 ${fmt(Math.round(median))})
+        </div>
+        <div class="ai-insight-item">
+            📊 <strong>파레토 집중도:</strong> 상위 <strong>${top20Count}개(${Math.round(top20Count/count*100)}%)</strong> 항목이 전체의 <strong>${top20Share}%</strong>를 차지하고 있습니다. (${cvDesc})
+        </div>
+    `;
+
+    if (outliers.length > 0) {
+        const topOutlier = outliers.sort((a, b) => b.value - a.value)[0];
+        const ratio = mean > 0 ? (topOutlier.value / mean).toFixed(1) : '-';
+        html += `
+        <div class="ai-insight-item outlier">
+            ⚠️ <strong>이상치(Anomaly) 감지 (${outliers.length}건):</strong> [${topOutlier.label}] 항목이 <strong>${fmt(topOutlier.value)}</strong>로 평균의 <strong>${ratio}배</strong>에 달하는 통계적 극단값입니다.
+            <button type="button" id="btn-highlight-outliers" class="ai-outlier-btn">
+                ⚡ 이상치 ${outliers.length}건 3D 집중 하이라이트
+            </button>
+        </div>
+        `;
+    } else {
+        html += `
+        <div class="ai-insight-item">
+            ✅ <strong>이상치 검증:</strong> 1.5×IQR 기준을 벗어나는 극단적 이상치가 없으며 안정적입니다.
+        </div>
+        `;
+    }
+
+    html += `</div>`;
+    box.innerHTML = html;
+
+    // 이상치 하이라이트 버튼 이벤트
+    $('btn-highlight-outliers')?.addEventListener('click', () => {
+        if (!outliers.length) return;
+        const target = dataObjects[outliers[0].idx];
+        if (target) {
+            selectObject(target, outliers[0].idx);
+            showToast(`🎯 이상치 <strong>[${outliers[0].label}]</strong>에 카메라를 집중했습니다!`);
+        }
+    });
+}
+
+// ════════════════════════════════════════════════════════════
+// 8-2. 시계열/다차원 타임슬라이더 애니메이션 플레이어
+// ════════════════════════════════════════════════════════════
+let timePlayerTimer = null;
+let currentTimeStep = 0;
+
+function initTimePlayer() {
+    if (!analysisResult || !analysisResult.numericCols || analysisResult.numericCols.length === 0) {
+        if (timePlayerBar) timePlayerBar.style.display = 'none';
+        return;
+    }
+
+    const numCols = analysisResult.numericCols;
+    const curY = parseInt(yAxisSelect.value);
+    let curStep = numCols.indexOf(curY);
+    if (curStep === -1) curStep = 0;
+    currentTimeStep = curStep;
+
+    if (timeSliderRange) {
+        timeSliderRange.min = 0;
+        timeSliderRange.max = numCols.length - 1;
+        timeSliderRange.value = curStep;
+    }
+    updateTimePlayerUI();
+
+    // 여러 개의 수치 열이 있을 경우 타임라인 플레이어 버튼 표시
+    if (numCols.length > 1) {
+        if (btnToggleTimeline) btnToggleTimeline.style.display = '';
+    }
+}
+
+function updateTimePlayerUI() {
+    if (!analysisResult || !analysisResult.numericCols || !parsedData) return;
+    const numCols = analysisResult.numericCols;
+    if (currentTimeStep < 0 || currentTimeStep >= numCols.length) currentTimeStep = 0;
+
+    const colIdx = numCols[currentTimeStep];
+    const colName = parsedData.headers[colIdx] || `컬럼 #${colIdx}`;
+
+    if (timeStepBadge) timeStepBadge.textContent = `${currentTimeStep + 1} / ${numCols.length}`;
+    if (timeColName) timeColName.textContent = colName;
+    if (timeSliderRange) timeSliderRange.value = currentTimeStep;
+}
+
+function openTimePlayer() {
+    if (!timePlayerBar) return;
+    initTimePlayer();
+    timePlayerBar.style.display = 'flex';
+    showToast('⏳ <strong>타임라인 플레이어</strong>가 활성화되었습니다. 재생(▶) 버튼을 눌러보세요!');
+}
+
+function closeTimePlayer() {
+    if (!timePlayerBar) return;
+    stopTimePlay();
+    timePlayerBar.style.display = 'none';
+}
+
+function setTimeStep(step) {
+    if (!analysisResult || !analysisResult.numericCols || !parsedData) return;
+    const numCols = analysisResult.numericCols;
+    if (step < 0) step = numCols.length - 1;
+    if (step >= numCols.length) step = 0;
+
+    currentTimeStep = step;
+    const colIdx = numCols[currentTimeStep];
+    yAxisSelect.value = colIdx;
+
+    updateTimePlayerUI();
+    applyVisualization();
+}
+
+function toggleTimePlay() {
+    if (timePlayerTimer) {
+        stopTimePlay();
+    } else {
+        startTimePlay();
+    }
+}
+
+function startTimePlay() {
+    if (!analysisResult || !analysisResult.numericCols) return;
+    stopTimePlay();
+    const speed = parseInt(timeSpeedSelect?.value) || 900;
+    if (btnTimePlay) {
+        btnTimePlay.textContent = '⏸ 정지';
+        btnTimePlay.classList.add('playing');
+    }
+
+    timePlayerTimer = setInterval(() => {
+        const nextStep = (currentTimeStep + 1) % analysisResult.numericCols.length;
+        setTimeStep(nextStep);
+    }, speed);
+}
+
+function stopTimePlay() {
+    if (timePlayerTimer) {
+        clearInterval(timePlayerTimer);
+        timePlayerTimer = null;
+    }
+    if (btnTimePlay) {
+        btnTimePlay.textContent = '▶ 재생';
+        btnTimePlay.classList.remove('playing');
+    }
+}
+
+// 타임라인 플레이어 이벤트 바인딩
+btnTimePlay?.addEventListener('click', toggleTimePlay);
+btnTimePrev?.addEventListener('click', () => {
+    stopTimePlay();
+    setTimeStep(currentTimeStep - 1);
+});
+btnTimeNext?.addEventListener('click', () => {
+    stopTimePlay();
+    setTimeStep(currentTimeStep + 1);
+});
+timeSliderRange?.addEventListener('input', (e) => {
+    stopTimePlay();
+    setTimeStep(parseInt(e.target.value));
+});
+timeSpeedSelect?.addEventListener('change', () => {
+    if (timePlayerTimer) {
+        startTimePlay();
+    }
+});
+btnCloseTimePlayer?.addEventListener('click', closeTimePlayer);
 
 function statRow(label, value) {
     return `<div class="stat-row"><span class="stat-label">${label}</span><span class="stat-value">${value}</span></div>`;
@@ -1763,6 +2034,10 @@ function chartOptions(type, xLabel, yLabel) {
 
 function applyVisualization() {
     render2DChart();
+    if (analysisResult) {
+        renderAIInsights(analysisResult);
+        updateTimePlayerUI();
+    }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1839,6 +2114,7 @@ function processData(sourceName) {
     displayAnalysis(analysisResult);
     updateAxisSelectors(analysisResult);
     renderDataTable(parsedData);
+    initTimePlayer();
     applyVisualization();
 
     statusIndicator.textContent = `● ${sourceName}`;
