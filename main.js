@@ -713,38 +713,6 @@ if (menuPanel && menuContent) {
     });
 }
 
-// GPU 대량 데이터 벤치마크 테스트 버튼
-const btnGpuBenchmark = $('btn-gpu-benchmark');
-if (btnGpuBenchmark) {
-    btnGpuBenchmark.addEventListener('click', () => {
-        const rowCount = 500;
-        const benchmarkRows = [];
-        const categories = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta'];
-        for (let i = 1; i <= rowCount; i++) {
-            const cat = categories[i % categories.length];
-            const val = Math.round(50 + Math.sin(i * 0.15) * 35 + (Math.random() * 20));
-            benchmarkRows.push({ '항목명': `${cat}_#${i}`, '측정값': val });
-        }
-        parsedData = {
-            headers: ['항목명', '측정값'],
-            rows: benchmarkRows
-        };
-        if (fileNameDisplay) fileNameDisplay.textContent = `⚡ gpu_benchmark_500pts.csv (GPU 벤치마크 데이터 / GPU Benchmark Data - ${rowCount}건)`;
-        if (chartTypeSelect) chartTypeSelect.value = 'scatter';
-        if (limitSelect) limitSelect.value = 'all';
-
-        analyzeData(parsedData);
-        setupAxisSelects(parsedData);
-        setupFilterOptions(parsedData);
-        applyVisualization();
-
-        if (statusIndicator) {
-            statusIndicator.className = 'status online';
-            statusIndicator.textContent = `⚡ 벤치마크 렌더링 중 / Benchmark Active (${rowCount}개)`;
-        }
-    });
-}
-
 $('ambient-intensity').addEventListener('input', e => { ambientLight.intensity = parseFloat(e.target.value); });
 $('point-intensity').addEventListener('input', e => { pointLight.intensity = parseFloat(e.target.value); });
 $('camera-fov').addEventListener('input', e => {
