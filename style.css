@@ -1422,9 +1422,12 @@ input[type="color"] {
     border-bottom: 1px solid rgba(99, 102, 241, 0.25);
     cursor: grab;
     user-select: none;
+    -webkit-user-select: none;
     font-size: 13px;
     font-weight: 700;
     color: #f1f5f9;
+    touch-action: none;
+    -webkit-touch-callout: none;
 }
 .floating-settings-header:active {
     cursor: grabbing;

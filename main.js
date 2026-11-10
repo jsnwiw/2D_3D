@@ -598,46 +598,76 @@ if (btnToggleSettings && settingsBody) {
     });
 }
 
-// 드래그 이동 (Pointer Events – 마우스 + 터치 + 스타일러스 통합)
+// 드래그 이동 (Pointer Events + Touch Events 이중 지원)
 if (settingsPanel && settingsHeader) {
     let isDragging = false;
     let dragOffsetX = 0;
     let dragOffsetY = 0;
 
-    settingsHeader.addEventListener('pointerdown', (e) => {
-        // 접기 버튼 클릭 시 드래그 시작하지 않음
+    function clampPosition(x, y) {
+        const maxX = window.innerWidth - settingsPanel.offsetWidth;
+        const maxY = window.innerHeight - 40;
+        return {
+            x: Math.max(0, Math.min(x, maxX)),
+            y: Math.max(0, Math.min(y, maxY))
+        };
+    }
+
+    function applyPosition(clientX, clientY) {
+        const pos = clampPosition(clientX - dragOffsetX, clientY - dragOffsetY);
+        settingsPanel.style.left = pos.x + 'px';
+        settingsPanel.style.top = pos.y + 'px';
+        settingsPanel.style.bottom = 'auto';
+        settingsPanel.style.right = 'auto';
+    }
+
+    // === Touch Events (모바일 최우선) ===
+    settingsHeader.addEventListener('touchstart', (e) => {
         if (e.target.closest('.settings-toggle-btn')) return;
+        if (e.touches.length !== 1) return;
+        isDragging = true;
+        const touch = e.touches[0];
+        const rect = settingsPanel.getBoundingClientRect();
+        dragOffsetX = touch.clientX - rect.left;
+        dragOffsetY = touch.clientY - rect.top;
+        e.preventDefault();
+        e.stopPropagation();
+    }, { passive: false });
+
+    settingsHeader.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        if (e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        applyPosition(touch.clientX, touch.clientY);
+        e.preventDefault();
+        e.stopPropagation();
+    }, { passive: false });
+
+    settingsHeader.addEventListener('touchend', (e) => {
+        isDragging = false;
+    }, { passive: true });
+
+    settingsHeader.addEventListener('touchcancel', () => {
+        isDragging = false;
+    }, { passive: true });
+
+    // === Mouse Events (데스크톱) ===
+    settingsHeader.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.settings-toggle-btn')) return;
+        if (e.button !== 0) return;
         isDragging = true;
         const rect = settingsPanel.getBoundingClientRect();
         dragOffsetX = e.clientX - rect.left;
         dragOffsetY = e.clientY - rect.top;
-        settingsHeader.setPointerCapture(e.pointerId);
         e.preventDefault();
     });
 
-    settingsHeader.addEventListener('pointermove', (e) => {
+    window.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
-        let newX = e.clientX - dragOffsetX;
-        let newY = e.clientY - dragOffsetY;
-        // 화면 밖으로 나가지 않도록 제한
-        const maxX = window.innerWidth - settingsPanel.offsetWidth;
-        const maxY = window.innerHeight - 40; // 헤더만이라도 보이게
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
-        settingsPanel.style.left = newX + 'px';
-        settingsPanel.style.top = newY + 'px';
-        settingsPanel.style.bottom = 'auto';
-        settingsPanel.style.right = 'auto';
+        applyPosition(e.clientX, e.clientY);
     });
 
-    settingsHeader.addEventListener('pointerup', (e) => {
-        if (isDragging) {
-            isDragging = false;
-            settingsHeader.releasePointerCapture(e.pointerId);
-        }
-    });
-
-    settingsHeader.addEventListener('pointercancel', (e) => {
+    window.addEventListener('mouseup', () => {
         isDragging = false;
     });
 }
