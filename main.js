@@ -348,6 +348,148 @@ btnToggleTimeline?.addEventListener('click', () => {
     }
 });
 
+// 📑 A4 분석 보고서 인쇄 및 PDF 저장
+$('btn-print-report')?.addEventListener('click', generateAndPrintReport);
+
+function generateAndPrintReport() {
+    if (!parsedData || !analysisResult) {
+        showToast('⚠️ 보고서를 생성할 데이터가 없습니다. 먼저 CSV나 엑셀 파일을 업로드해 주세요.');
+        return;
+    }
+
+    const reportContainer = $('print-report-container');
+    if (!reportContainer) return;
+
+    hideTooltip();
+    renderer.render(scene, camera);
+    const snap3D = renderer.domElement.toDataURL('image/png');
+    const snap2D = chart2d ? chart2d.toBase64Image() : '';
+
+    const yIdx = parseInt(yAxisSelect.value);
+    const xIdx = parseInt(xAxisSelect.value);
+    const yColName = parsedData.headers[yIdx];
+    const xColName = parsedData.headers[xIdx];
+    const stats = analysisResult.numericStats[yColName] || {};
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}.${now.getMonth() + 1}.${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const fileNameStr = currentUploadedFile ? currentUploadedFile.name : (fileNameDisplay?.textContent || '데이터 세트');
+
+    let tableRowsHtml = '';
+    const previewRows = parsedData.rows.slice(0, 15);
+    previewRows.forEach(r => {
+        tableRowsHtml += '<tr>';
+        parsedData.headers.slice(0, 6).forEach((_, ci) => {
+            tableRowsHtml += `<td>${r[ci]}</td>`;
+        });
+        tableRowsHtml += '</tr>';
+    });
+
+    reportContainer.innerHTML = `
+        <div class="report-header">
+            <div class="report-title">
+                <h2>📊 3D & 2D 데이터 시각화 분석 요약 보고서</h2>
+                <p>3D Data Visualization & AI Statistical Summary Report</p>
+            </div>
+            <div class="report-meta">
+                <div><strong>출력 일시:</strong> ${dateStr}</div>
+                <div><strong>분석 파일:</strong> ${fileNameStr}</div>
+                <div><strong>분석 지표:</strong> [X축: ${xColName}] × [Y축: ${yColName}]</div>
+            </div>
+        </div>
+
+        <div class="report-stats-grid">
+            <div class="report-stat-card">
+                <div class="label">총 데이터 건수</div>
+                <div class="val">${parsedData.rows.length.toLocaleString()}건</div>
+            </div>
+            <div class="report-stat-card">
+                <div class="label">합계 (Total Sum)</div>
+                <div class="val">${fmt(stats.sum || 0)}</div>
+            </div>
+            <div class="report-stat-card">
+                <div class="label">평균값 (Mean)</div>
+                <div class="val">${fmt(Math.round(stats.mean || 0))}</div>
+            </div>
+            <div class="report-stat-card">
+                <div class="label">최대값 (Max)</div>
+                <div class="val">${fmt(stats.max || 0)}</div>
+            </div>
+        </div>
+
+        <div class="report-grid-images">
+            <div class="report-img-box">
+                <h4>🧊 3D 데이터 입체 모델링</h4>
+                <img src="${snap3D}" alt="3D Visualization View">
+            </div>
+            <div class="report-img-box">
+                <h4>📈 2D 분석 차트 그래프</h4>
+                ${snap2D ? `<img src="${snap2D}" alt="2D Chart View">` : '<div style="height:180px; display:flex; align-items:center; justify-content:center; color:#94a3b8;">차트 없음</div>'}
+            </div>
+        </div>
+
+        <div class="report-insight-box">
+            <h4>💡 AI 실시간 통계 인사이트 요약</h4>
+            <div>• <strong>데이터 통계 특성:</strong> ${yColName} 지표의 평균은 ${fmt(Math.round(stats.mean || 0))}이며, 최저값은 ${fmt(stats.min || 0)}, 최대값은 ${fmt(stats.max || 0)}입니다.</div>
+            <div>• <strong>파레토 집중도:</strong> 상위 항목들이 전체 합계(${fmt(stats.sum || 0)})의 상당 부분을 점유하고 있으며, 3D 뷰 및 2D 그래프를 통해 분포를 한눈에 확인할 수 있습니다.</div>
+        </div>
+
+        <div style="margin-top: 14px;">
+            <h4 style="margin: 0 0 6px 0; font-size: 13px; color: #334155;">📄 데이터 표 미리보기 (상위 ${previewRows.length}행)</h4>
+            <table class="report-table">
+                <thead>
+                    <tr>${parsedData.headers.slice(0, 6).map(h => `<th>${h}</th>`).join('')}</tr>
+                </thead>
+                <tbody>${tableRowsHtml}</tbody>
+            </table>
+        </div>
+    `;
+
+    reportContainer.style.display = 'block';
+    showToast('📑 <strong>인쇄 창</strong>이 열렸습니다. [대상: PDF로 저장]을 선택하시면 PDF 파일로 저장됩니다!');
+
+    setTimeout(() => {
+        window.print();
+    }, 250);
+
+    window.onafterprint = () => {
+        reportContainer.style.display = 'none';
+    };
+}
+
+// 📂 전체화면 드래그 앤 드롭 파일 로더
+const dragDropOverlay = $('drag-drop-overlay');
+let dragCounter = 0;
+
+window.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    dragCounter++;
+    if (dragDropOverlay) dragDropOverlay.style.display = 'flex';
+});
+
+window.addEventListener('dragover', (e) => {
+    e.preventDefault();
+});
+
+window.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+        dragCounter = 0;
+        if (dragDropOverlay) dragDropOverlay.style.display = 'none';
+    }
+});
+
+window.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragCounter = 0;
+    if (dragDropOverlay) dragDropOverlay.style.display = 'none';
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+        loadAndParseCSVFile(files[0]);
+    }
+});
+
 // 키보드 단축키 지원 (Space: 회전, R: 기본뷰, G: 그리드, L: 라벨, M: 메뉴, ESC: 닫기)
 window.addEventListener('keydown', (e) => {
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
@@ -2041,12 +2183,14 @@ function applyVisualization() {
 }
 
 // ════════════════════════════════════════════════════════════
-// 16. 이벤트 리스너 & 파일 로더
+// 16. 이벤트 리스너 & 파일 로더 (CSV 및 엑셀 .xlsx, .xls 완벽 지원)
 // ════════════════════════════════════════════════════════════
 function loadAndParseCSVFile(file) {
     if (!file) return;
     currentUploadedFile = file;
-    fileNameDisplay.textContent = `📄 ${file.name} (업로드 파일 / Uploaded File - ${(file.size / 1024).toFixed(1)} KB)`;
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
+    fileNameDisplay.textContent = `📄 ${file.name} (${isExcel ? '엑셀 / Excel' : 'CSV'} - ${(file.size / 1024).toFixed(1)} KB)`;
     statusIndicator.textContent = '● 로딩 중... / Loading...';
     statusIndicator.className = 'status loading';
 
@@ -2055,17 +2199,31 @@ function loadAndParseCSVFile(file) {
     reader.onload = evt => {
         try {
             const buffer = evt.target.result;
-            const text = decodeCSVBuffer(buffer, encodingMode);
+            let text = '';
+            let sheetInfo = '';
+
+            if (isExcel && window.XLSX) {
+                const workbook = window.XLSX.read(buffer, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                text = window.XLSX.utils.sheet_to_csv(worksheet);
+                sheetInfo = ` [시트: ${sheetName}]`;
+                showToast(`📊 엑셀 파일 로드 완료: <strong>${file.name}</strong> (${sheetName} 시트)`);
+            } else {
+                text = decodeCSVBuffer(buffer, encodingMode);
+            }
+
             parsedData = parseCSV(text);
             if (!parsedData) {
                 statusIndicator.textContent = '● 파싱 실패 / Parsing Failed';
                 statusIndicator.className = 'status offline';
                 return;
             }
-            processData(`📄 ${file.name} (사용자 파일 / User File)`);
+            fileNameDisplay.textContent = `📄 ${file.name}${sheetInfo} (${isExcel ? '엑셀 / Excel' : 'CSV'} - ${(file.size / 1024).toFixed(1)} KB)`;
+            processData(`📄 ${file.name}${sheetInfo}`);
         } catch (err) {
-            console.error('CSV 읽기/디코딩 에러:', err);
-            statusIndicator.textContent = '● 인코딩 에러 / Encoding Error';
+            console.error('파일 읽기/파싱 에러:', err);
+            statusIndicator.textContent = '● 파일 읽기 에러 / Read Error';
             statusIndicator.className = 'status offline';
         }
     };
