@@ -258,57 +258,58 @@
                 </div>
             </div>
 
-            <!-- 5. 3D 환경 설정 섹션 -->
-            <div class="accordion-item draggable-panel" id="settings-section">
-                <div class="accordion-header" data-target="settings-body" id="settings-header">
-                    <span class="header-title">⚙️ 3D 환경 & 조명 설정</span>
-                    <span class="chevron">▾</span>
-                </div>
-                <div class="accordion-body" id="settings-body">
-                    <div class="control-group">
-                        <label for="ambient-intensity">환경광 강도:</label>
-                        <input type="range" id="ambient-intensity" min="0" max="2" step="0.1" value="0.8">
-                    </div>
-                    <div class="control-group">
-                        <label for="point-intensity">포인트 라이트:</label>
-                        <input type="range" id="point-intensity" min="0" max="3" step="0.1" value="0.8">
-                    </div>
-                    <div class="control-group">
-                        <label for="camera-fov">카메라 FOV:</label>
-                        <input type="range" id="camera-fov" min="30" max="100" step="1" value="55">
-                    </div>
-                    <div class="control-group">
-                        <label for="bg-color">배경색:</label>
-                        <input type="color" id="bg-color" value="#f1f5f9">
-                    </div>
-                    <div class="control-group">
-                        <label for="color-theme-select">🎨 3D 색상 테마:</label>
-                        <select id="color-theme-select">
-                            <option value="vibrant">🌈 비비드 레인보우</option>
-                            <option value="ocean">🌊 오션 블루/시안</option>
-                            <option value="neon">⚡ 네온 사이버펑크</option>
-                            <option value="sunset">🌅 선셋 오렌지/핑크</option>
-                            <option value="emerald">🌿 에메랄드 그린</option>
-                            <option value="gold">🥇 골드 & 럭셔리</option>
-                            <option value="pastel">🌸 파스텔 마카롱</option>
-                            <option value="fire">🔥 파이어 & 플레임</option>
-                            <option value="aurora">🌌 오로라 판타지</option>
-                            <option value="monochrome">🖤 모노크롬 슬레이트</option>
-                            <option value="custom">✏️ 직접 색상 코드 지정 (HEX)</option>
-                        </select>
-                    </div>
-                    <div class="control-group" id="custom-color-group" style="display:none; background: rgba(99,102,241,0.12); padding: 10px 12px; border-radius: 8px; border: 1.5px solid rgba(99,102,241,0.35); margin-top: 4px;">
-                        <label for="custom-theme-color-picker" style="color: #a5b4fc; font-weight:700; font-size:12px;">🎨 색상 코드 (HEX) 직접 지정:</label>
-                        <div class="range-row" style="margin-top: 6px;">
-                            <input type="color" id="custom-theme-color-picker" value="#6366f1" title="색상 피커로 선택">
-                            <input type="text" id="custom-theme-color-code" value="#6366F1" placeholder="#6366F1" maxlength="7" style="width: 105px; text-transform: uppercase; font-family: monospace; font-weight: 700; letter-spacing: 0.5px; text-align: center; border: 1.5px solid #818cf8;">
-                            <span style="font-size: 11px; color: #94a3b8;">색상 코드</span>
-                        </div>
-                    </div>
+        </div>
+    </aside>
+
+    <!-- 독립 플로팅 3D 환경 설정 패널 (드래그 이동 가능) -->
+    <div class="floating-settings-panel" id="settings-section">
+        <div class="floating-settings-header" id="settings-header">
+            <span>⚙️ 3D 환경 & 조명 설정</span>
+            <button type="button" id="btn-toggle-settings" class="settings-toggle-btn" title="접기/펼치기">▾</button>
+        </div>
+        <div class="floating-settings-body" id="settings-body">
+            <div class="control-group">
+                <label for="ambient-intensity">환경광 강도:</label>
+                <input type="range" id="ambient-intensity" min="0" max="2" step="0.1" value="0.8">
+            </div>
+            <div class="control-group">
+                <label for="point-intensity">포인트 라이트:</label>
+                <input type="range" id="point-intensity" min="0" max="3" step="0.1" value="0.8">
+            </div>
+            <div class="control-group">
+                <label for="camera-fov">카메라 FOV:</label>
+                <input type="range" id="camera-fov" min="30" max="100" step="1" value="55">
+            </div>
+            <div class="control-group">
+                <label for="bg-color">배경색:</label>
+                <input type="color" id="bg-color" value="#f1f5f9">
+            </div>
+            <div class="control-group">
+                <label for="color-theme-select">🎨 3D 색상 테마:</label>
+                <select id="color-theme-select">
+                    <option value="vibrant">🌈 비비드 레인보우</option>
+                    <option value="ocean">🌊 오션 블루/시안</option>
+                    <option value="neon">⚡ 네온 사이버펑크</option>
+                    <option value="sunset">🌅 선셋 오렌지/핑크</option>
+                    <option value="emerald">🌿 에메랄드 그린</option>
+                    <option value="gold">🥇 골드 & 럭셔리</option>
+                    <option value="pastel">🌸 파스텔 마카롱</option>
+                    <option value="fire">🔥 파이어 & 플레임</option>
+                    <option value="aurora">🌌 오로라 판타지</option>
+                    <option value="monochrome">🖤 모노크롬 슬레이트</option>
+                    <option value="custom">✏️ 직접 색상 코드 지정 (HEX)</option>
+                </select>
+            </div>
+            <div class="control-group" id="custom-color-group" style="display:none; background: rgba(99,102,241,0.12); padding: 10px 12px; border-radius: 8px; border: 1.5px solid rgba(99,102,241,0.35); margin-top: 4px;">
+                <label for="custom-theme-color-picker" style="color: #a5b4fc; font-weight:700; font-size:12px;">🎨 색상 코드 (HEX) 직접 지정:</label>
+                <div class="range-row" style="margin-top: 6px;">
+                    <input type="color" id="custom-theme-color-picker" value="#6366f1" title="색상 피커로 선택">
+                    <input type="text" id="custom-theme-color-code" value="#6366F1" placeholder="#6366F1" maxlength="7" style="width: 105px; text-transform: uppercase; font-family: monospace; font-weight: 700; letter-spacing: 0.5px; text-align: center; border: 1.5px solid #818cf8;">
+                    <span style="font-size: 11px; color: #94a3b8;">색상 코드</span>
                 </div>
             </div>
         </div>
-    </aside>
+    </div>
 
     <!-- 2D 차트 패널 (좌측 하단) -->
     <div id="chart-panel" style="display:none;">

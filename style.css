@@ -1397,22 +1397,68 @@ input[type="color"] {
     .control-group input[type="range"] {
         max-width: 100%;
     }
-    /* Draggable panel for settings (mobile) */
-.draggable-panel {
-    position: absolute;
-    top: 80px; /* initial offset */
-    left: 10px;
-    width: 320px;
-    max-width: 90vw;
-    z-index: 30;
-    cursor: move;
-    /* keep glass‑morphism background */
-    background: rgba(15, 23, 42, 0.94);
-    backdrop-filter: blur(14px);
-    border: 1px solid rgba(99, 102, 241, 0.3);
+    /* Draggable floating settings panel */
+.floating-settings-panel {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    width: 310px;
+    max-width: calc(100vw - 32px);
+    z-index: 25;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(99, 102, 241, 0.35);
     border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    box-shadow: 0 8px 28px rgba(0,0,0,0.5), 0 0 20px rgba(99,102,241,0.12);
+    overflow: hidden;
+    touch-action: none;
 }
+.floating-settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(30, 41, 59, 0.9);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.25);
+    cursor: grab;
+    user-select: none;
+    font-size: 13px;
+    font-weight: 700;
+    color: #f1f5f9;
+}
+.floating-settings-header:active {
+    cursor: grabbing;
+}
+.settings-toggle-btn {
+    background: transparent;
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+    font-size: 13px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.settings-toggle-btn:hover {
+    background: rgba(99, 102, 241, 0.25);
+    color: #fff;
+}
+.floating-settings-body {
+    padding: 10px 14px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.floating-settings-body.collapsed {
+    display: none;
+}
+@media (max-width: 600px) {
+    .floating-settings-panel {
+        width: calc(100vw - 16px);
+        left: 8px;
+        bottom: 8px;
+    }
+}
+
 
     /* Tooltip font size for readability */
     .tooltip-3d {
