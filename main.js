@@ -167,7 +167,6 @@ const tooltipName = $('tooltip-name');
 const tooltipValue = $('tooltip-value');
 const labelLayer = $('label-layer');
 const barStyleSelect = $('bar-style');
-const btnLoadSample = $('btn-load-sample');
 const menuPanel = $('menu-panel');
 const btnToggleMenu = $('btn-toggle-menu');
 const btnCloseMenu = $('btn-close-menu');
@@ -2247,25 +2246,6 @@ if (csvEncodingSelect) {
         }
     });
 }
-
-const SAMPLE_CSV = `지역,매출,비용,이익
-서울,15000,8500,6500
-부산,9200,5100,4100
-대구,7800,4200,3600
-인천,8500,4800,3700
-광주,5600,3200,2400
-대전,6100,3500,2600
-울산,4800,2700,2100
-세종,3200,1800,1400
-제주,6700,3900,2800
-수원,7100,4000,3100`;
-
-btnLoadSample?.addEventListener('click', () => {
-    parsedData = parseCSV(SAMPLE_CSV);
-    if (!parsedData) return;
-    fileNameDisplay.textContent = '📄 sample_data.csv (기본 샘플 데이터 / Default Sample Data)';
-    processData('기본 샘플 데이터 / Default Sample Data');
-});
 
 function processData(sourceName) {
     analysisResult = analyzeData(parsedData);
