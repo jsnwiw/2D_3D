@@ -581,98 +581,6 @@ function initAccordion() {
         });
     });
 }
-// ═══════════════════════════════════════════════════════════
-// 독립 플로팅 3D 설정 패널 – 드래그 이동 + 접기/펼치기
-// ═══════════════════════════════════════════════════════════
-const settingsPanel = $('settings-section');
-const settingsHeader = $('settings-header');
-const settingsBody = $('settings-body');
-const btnToggleSettings = $('btn-toggle-settings');
-
-// 접기/펼치기 버튼
-if (btnToggleSettings && settingsBody) {
-    btnToggleSettings.addEventListener('click', (e) => {
-        e.stopPropagation();
-        settingsBody.classList.toggle('collapsed');
-        btnToggleSettings.textContent = settingsBody.classList.contains('collapsed') ? '▸' : '▾';
-    });
-}
-
-// 드래그 이동 (Pointer Events + Touch Events 이중 지원)
-if (settingsPanel && settingsHeader) {
-    let isDragging = false;
-    let dragOffsetX = 0;
-    let dragOffsetY = 0;
-
-    function clampPosition(x, y) {
-        const maxX = window.innerWidth - settingsPanel.offsetWidth;
-        const maxY = window.innerHeight - 40;
-        return {
-            x: Math.max(0, Math.min(x, maxX)),
-            y: Math.max(0, Math.min(y, maxY))
-        };
-    }
-
-    function applyPosition(clientX, clientY) {
-        const pos = clampPosition(clientX - dragOffsetX, clientY - dragOffsetY);
-        settingsPanel.style.left = pos.x + 'px';
-        settingsPanel.style.top = pos.y + 'px';
-        settingsPanel.style.bottom = 'auto';
-        settingsPanel.style.right = 'auto';
-    }
-
-    // === Touch Events (모바일 최우선) ===
-    settingsHeader.addEventListener('touchstart', (e) => {
-        if (e.target.closest('.settings-toggle-btn')) return;
-        if (e.touches.length !== 1) return;
-        isDragging = true;
-        const touch = e.touches[0];
-        const rect = settingsPanel.getBoundingClientRect();
-        dragOffsetX = touch.clientX - rect.left;
-        dragOffsetY = touch.clientY - rect.top;
-        e.preventDefault();
-        e.stopPropagation();
-    }, { passive: false });
-
-    settingsHeader.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        if (e.touches.length !== 1) return;
-        const touch = e.touches[0];
-        applyPosition(touch.clientX, touch.clientY);
-        e.preventDefault();
-        e.stopPropagation();
-    }, { passive: false });
-
-    settingsHeader.addEventListener('touchend', (e) => {
-        isDragging = false;
-    }, { passive: true });
-
-    settingsHeader.addEventListener('touchcancel', () => {
-        isDragging = false;
-    }, { passive: true });
-
-    // === Mouse Events (데스크톱) ===
-    settingsHeader.addEventListener('mousedown', (e) => {
-        if (e.target.closest('.settings-toggle-btn')) return;
-        if (e.button !== 0) return;
-        isDragging = true;
-        const rect = settingsPanel.getBoundingClientRect();
-        dragOffsetX = e.clientX - rect.left;
-        dragOffsetY = e.clientY - rect.top;
-        e.preventDefault();
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        applyPosition(e.clientX, e.clientY);
-    });
-
-    window.addEventListener('mouseup', () => {
-        isDragging = false;
-    });
-}
-
-
 // ════════════════════════════════════════════════════════════
 // 메뉴 패널 완벽 스크롤 엔진 (마우스 휠 + 터치 드래그 + 마우스 드래그)
 // ════════════════════════════════════════════════════════════
@@ -729,6 +637,12 @@ if (menuPanel && menuContent) {
     let isTouchActive = false;
 
     menuPanel.addEventListener('touchstart', (e) => {
+        // 슬라이더, 입력창, 버튼, 셀렉트 등 터치 시 스크롤이 터치를 가로채지 않도록 방어
+        const interactiveTags = ['INPUT', 'SELECT', 'BUTTON', 'LABEL', 'TEXTAREA'];
+        if (interactiveTags.includes(e.target.tagName) || e.target.closest('button, select, input, label, .control-group, .range-row')) {
+            isTouchActive = false;
+            return;
+        }
         if (e.touches.length === 1) {
             activateMenuScroll();
             isTouchActive = true;
@@ -739,6 +653,11 @@ if (menuPanel && menuContent) {
 
     menuPanel.addEventListener('touchmove', (e) => {
         if (!isTouchActive || e.touches.length !== 1) return;
+        // 터치 대상이 슬라이더라면 메뉴 스크롤 중단
+        if (e.target.closest('input[type="range"]')) {
+            isTouchActive = false;
+            return;
+        }
         e.stopPropagation();
         e.preventDefault();
         const currentY = e.touches[0].clientY;
@@ -808,6 +727,19 @@ $('point-intensity').addEventListener('input', e => { pointLight.intensity = par
 $('camera-fov').addEventListener('input', e => {
     camera.fov = parseInt(e.target.value);
     camera.updateProjectionMatrix();
+});
+
+// 모바일 터치 슬라이더 부드러운 조작 (터치 홀드 & 좌우 스와이프 시 부모 스크롤/줌 방지)
+['ambient-intensity', 'point-intensity', 'camera-fov', 'time-slider-range'].forEach(id => {
+    const el = $(id);
+    if (el) {
+        el.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+        }, { passive: true });
+        el.addEventListener('touchmove', (e) => {
+            e.stopPropagation();
+        }, { passive: true });
+    }
 });
 $('bg-color').addEventListener('input', e => {
     const c = e.target.value;
