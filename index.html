@@ -258,29 +258,91 @@
                 </div>
             </div>
 
-            <!-- 5. 3D 환경 설정 섹션 -->
+            <!-- 5. 3D 환경 & 조명 설정 섹션 -->
             <div class="accordion-item" id="settings-section">
                 <div class="accordion-header" data-target="settings-body">
                     <span class="header-title">⚙️ 3D 환경 & 조명 설정</span>
                     <span class="chevron">▾</span>
                 </div>
                 <div class="accordion-body" id="settings-body">
+                    <!-- 1. 환경광 -->
                     <div class="control-group">
-                        <label for="ambient-intensity">환경광 강도:</label>
+                        <div class="slider-label-row">
+                            <label for="ambient-intensity">💡 환경광 강도 (Ambient):</label>
+                            <span id="val-ambient" class="slider-val-badge">0.8</span>
+                        </div>
                         <input type="range" id="ambient-intensity" min="0" max="2" step="0.1" value="0.8">
                     </div>
+
+                    <!-- 2. 직사광 (태양광) -->
                     <div class="control-group">
-                        <label for="point-intensity">포인트 라이트:</label>
+                        <div class="slider-label-row">
+                            <label for="dir-intensity">☀️ 직사광 강도 (Sunlight):</label>
+                            <span id="val-dir" class="slider-val-badge">0.9</span>
+                        </div>
+                        <input type="range" id="dir-intensity" min="0" max="3" step="0.1" value="0.9">
+                    </div>
+
+                    <!-- 3. 포인트 라이트 -->
+                    <div class="control-group">
+                        <div class="slider-label-row">
+                            <label for="point-intensity">🔦 포인트 라이트 강도:</label>
+                            <span id="val-point" class="slider-val-badge">0.8</span>
+                        </div>
                         <input type="range" id="point-intensity" min="0" max="3" step="0.1" value="0.8">
                     </div>
+
+                    <!-- 4. 포인트 라이트 색상 -->
                     <div class="control-group">
-                        <label for="camera-fov">카메라 FOV:</label>
+                        <label for="point-color">🔦 포인트 라이트 색상:</label>
+                        <div class="range-row">
+                            <input type="color" id="point-color" value="#818cf8">
+                            <span style="font-size: 11px; color: #94a3b8;">조명 틴트 색상</span>
+                        </div>
+                    </div>
+
+                    <!-- 5. 화면 전체 노출 (Exposure) -->
+                    <div class="control-group">
+                        <div class="slider-label-row">
+                            <label for="exposure-intensity">📸 화면 노출 밝기 (Exposure):</label>
+                            <span id="val-exposure" class="slider-val-badge">1.1</span>
+                        </div>
+                        <input type="range" id="exposure-intensity" min="0.2" max="2.5" step="0.1" value="1.1">
+                    </div>
+
+                    <!-- 6. 카메라 시야각 FOV -->
+                    <div class="control-group">
+                        <div class="slider-label-row">
+                            <label for="camera-fov">🎥 카메라 시야각 (FOV):</label>
+                            <span id="val-fov" class="slider-val-badge">55°</span>
+                        </div>
                         <input type="range" id="camera-fov" min="30" max="100" step="1" value="55">
                     </div>
+
+                    <!-- 7. 배경 안개(Fog) 밀도 -->
                     <div class="control-group">
-                        <label for="bg-color">배경색:</label>
+                        <div class="slider-label-row">
+                            <label for="fog-density">🌫️ 공간 안개 밀도 (Fog):</label>
+                            <span id="val-fog" class="slider-val-badge">0.015</span>
+                        </div>
+                        <input type="range" id="fog-density" min="0" max="0.06" step="0.005" value="0.015">
+                    </div>
+
+                    <!-- 8. 그림자 효과 토글 -->
+                    <div class="control-group">
+                        <label for="shadow-toggle" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
+                            <span>🌓 실시간 입체 그림자 (Shadows):</span>
+                            <input type="checkbox" id="shadow-toggle" checked style="width:16px; height:16px; accent-color:#6366f1; cursor:pointer;">
+                        </label>
+                    </div>
+
+                    <!-- 9. 배경색 -->
+                    <div class="control-group">
+                        <label for="bg-color">🖼️ 배경색 (Background):</label>
                         <input type="color" id="bg-color" value="#f1f5f9">
                     </div>
+
+                    <!-- 10. 3D 색상 테마 -->
                     <div class="control-group">
                         <label for="color-theme-select">🎨 3D 색상 테마:</label>
                         <select id="color-theme-select">
@@ -305,6 +367,11 @@
                             <span style="font-size: 11px; color: #94a3b8;">색상 코드</span>
                         </div>
                     </div>
+
+                    <!-- 11. 기본값 복원 버튼 -->
+                    <button type="button" id="btn-reset-lighting" class="small-btn" style="width:100%; margin-top: 10px; padding: 7px; color: #a5b4fc; border-color: rgba(99,102,241,0.4);">
+                        🔄 조명 & 환경설정 기본값 복원
+                    </button>
                 </div>
             </div>
 

@@ -724,15 +724,108 @@ if (menuPanel && menuContent) {
     });
 }
 
-$('ambient-intensity').addEventListener('input', e => { ambientLight.intensity = parseFloat(e.target.value); });
-$('point-intensity').addEventListener('input', e => { pointLight.intensity = parseFloat(e.target.value); });
-$('camera-fov').addEventListener('input', e => {
-    camera.fov = parseInt(e.target.value);
-    camera.updateProjectionMatrix();
-});
+// ── 3D 환경 및 조명 실시간 제어 ──
+if ($('ambient-intensity')) {
+    $('ambient-intensity').addEventListener('input', e => {
+        ambientLight.intensity = parseFloat(e.target.value);
+        if ($('val-ambient')) $('val-ambient').textContent = e.target.value;
+    });
+}
+if ($('dir-intensity')) {
+    $('dir-intensity').addEventListener('input', e => {
+        dirLight.intensity = parseFloat(e.target.value);
+        if ($('val-dir')) $('val-dir').textContent = e.target.value;
+    });
+}
+if ($('point-intensity')) {
+    $('point-intensity').addEventListener('input', e => {
+        pointLight.intensity = parseFloat(e.target.value);
+        if ($('val-point')) $('val-point').textContent = e.target.value;
+    });
+}
+if ($('point-color')) {
+    $('point-color').addEventListener('input', e => {
+        pointLight.color = new THREE.Color(e.target.value);
+    });
+}
+if ($('exposure-intensity')) {
+    $('exposure-intensity').addEventListener('input', e => {
+        renderer.toneMappingExposure = parseFloat(e.target.value);
+        if ($('val-exposure')) $('val-exposure').textContent = e.target.value;
+    });
+}
+if ($('camera-fov')) {
+    $('camera-fov').addEventListener('input', e => {
+        camera.fov = parseInt(e.target.value);
+        camera.updateProjectionMatrix();
+        if ($('val-fov')) $('val-fov').textContent = e.target.value + '°';
+    });
+}
+if ($('fog-density')) {
+    $('fog-density').addEventListener('input', e => {
+        scene.fog.density = parseFloat(e.target.value);
+        if ($('val-fog')) $('val-fog').textContent = e.target.value;
+    });
+}
+if ($('shadow-toggle')) {
+    $('shadow-toggle').addEventListener('change', e => {
+        dirLight.castShadow = e.target.checked;
+        renderer.shadowMap.needsUpdate = true;
+    });
+}
+
+// 조명 & 환경설정 기본값 복원 버튼
+if ($('btn-reset-lighting')) {
+    $('btn-reset-lighting').addEventListener('click', () => {
+        // 1. 환경광
+        ambientLight.intensity = 0.8;
+        if ($('ambient-intensity')) $('ambient-intensity').value = 0.8;
+        if ($('val-ambient')) $('val-ambient').textContent = '0.8';
+
+        // 2. 직사광
+        dirLight.intensity = 0.9;
+        if ($('dir-intensity')) $('dir-intensity').value = 0.9;
+        if ($('val-dir')) $('val-dir').textContent = '0.9';
+
+        // 3. 포인트 라이트
+        pointLight.intensity = 0.8;
+        pointLight.color = new THREE.Color(0x818cf8);
+        if ($('point-intensity')) $('point-intensity').value = 0.8;
+        if ($('val-point')) $('val-point').textContent = '0.8';
+        if ($('point-color')) $('point-color').value = '#818cf8';
+
+        // 4. 노출
+        renderer.toneMappingExposure = 1.1;
+        if ($('exposure-intensity')) $('exposure-intensity').value = 1.1;
+        if ($('val-exposure')) $('val-exposure').textContent = '1.1';
+
+        // 5. 카메라 FOV
+        camera.fov = 55;
+        camera.updateProjectionMatrix();
+        if ($('camera-fov')) $('camera-fov').value = 55;
+        if ($('val-fov')) $('val-fov').textContent = '55°';
+
+        // 6. 안개
+        scene.fog.density = 0.015;
+        if ($('fog-density')) $('fog-density').value = 0.015;
+        if ($('val-fog')) $('val-fog').textContent = '0.015';
+
+        // 7. 그림자
+        dirLight.castShadow = true;
+        if ($('shadow-toggle')) $('shadow-toggle').checked = true;
+
+        // 8. 배경색
+        const defaultBg = '#f1f5f9';
+        scene.background = new THREE.Color(defaultBg);
+        scene.fog.color = new THREE.Color(defaultBg);
+        if ($('bg-color')) $('bg-color').value = defaultBg;
+
+        showToast('💡 조명 및 환경설정이 기본값으로 초기화되었습니다.');
+    });
+}
 
 // 모바일 터치 슬라이더 부드러운 조작 (터치 홀드 & 좌우 스와이프 시 부모 스크롤/줌 방지)
-['ambient-intensity', 'point-intensity', 'camera-fov', 'time-slider-range'].forEach(id => {
+['ambient-intensity', 'dir-intensity', 'point-intensity', 'exposure-intensity', 'camera-fov', 'fog-density', 'time-slider-range'].forEach(id => {
     const el = $(id);
     if (el) {
         el.addEventListener('touchstart', (e) => {
