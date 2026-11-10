@@ -138,6 +138,8 @@ let cameraAnim = null;
 // ════════════════════════════════════════════════════════════
 const $ = id => document.getElementById(id);
 const csvUpload = $('csv-upload');
+const csvEncodingSelect = $('csv-encoding-select');
+let currentUploadedFile = null;
 const fileNameDisplay = $('file-name');
 const statusIndicator = $('status-indicator');
 const detailSection = $('detail-card-section');
@@ -607,10 +609,53 @@ if (customColorCode) {
 }
 
 // ════════════════════════════════════════════════════════════
-// 6. CSV 파싱
+// 6. CSV 파싱 및 한글/다중 인코딩 디코더 (UTF-8, EUC-KR / CP949 자동 감지)
 // ════════════════════════════════════════════════════════════
+function decodeCSVBuffer(buffer, mode = 'auto') {
+    const bytes = new Uint8Array(buffer);
+
+    // 1. 수동 강제 지정 (EUC-KR / CP949)
+    if (mode === 'euc-kr' || mode === 'cp949') {
+        try {
+            return new TextDecoder('euc-kr').decode(bytes);
+        } catch (e) {
+            console.warn('EUC-KR 디코딩 실패, UTF-8 폴백:', e);
+            return new TextDecoder('utf-8').decode(bytes);
+        }
+    }
+
+    // 2. 수동 강제 지정 (UTF-8)
+    if (mode === 'utf-8') {
+        return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    // 3. 자동 감지 (mode === 'auto')
+    // UTF-8 BOM (0xEF, 0xBB, 0xBF) 확인
+    if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+        return new TextDecoder('utf-8').decode(bytes);
+    }
+
+    // 한국 엑셀(ANSI)은 CP949/EUC-KR로 저장되어 한글 바이트가 0x80 이상이며 UTF-8 구조에 부합하지 않음
+    // strict utf-8 (fatal: true)로 시도하고, 예외 발생 시 EUC-KR로 디코딩
+    try {
+        const strictUtf8 = new TextDecoder('utf-8', { fatal: true });
+        return strictUtf8.decode(bytes);
+    } catch (e) {
+        try {
+            const eucKrDecoder = new TextDecoder('euc-kr');
+            return eucKrDecoder.decode(bytes);
+        } catch (err2) {
+            console.warn('EUC-KR 디코더 실패, 기본 UTF-8 완화 디코딩 시도:', err2);
+            return new TextDecoder('utf-8').decode(bytes);
+        }
+    }
+}
+
 function parseCSV(text) {
-    const lines = text.trim().replace(/\r\n/g, '\n').split('\n');
+    if (!text) return null;
+    // UTF-8 BOM(\uFEFF) 제거 및 줄바꿈 통일
+    text = text.replace(/^\uFEFF/, '').trim();
+    const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
     if (lines.length < 2) return null;
     const parseRow = (line) => {
         const result = []; let cur = ''; let inQ = false;
@@ -629,7 +674,7 @@ function parseCSV(text) {
         result.push(cur.trim());
         return result;
     };
-    const headers = parseRow(lines[0]);
+    const headers = parseRow(lines[0]).map(h => h.trim());
     const rows = [];
     for (let i = 1; i < lines.length; i++) {
         const row = parseRow(lines[i]);
@@ -1578,6 +1623,10 @@ const COLORS = [
 ];
 const BORDERS = COLORS.map(c => c.replace('0.85)', '1)'));
 
+if (window.Chart) {
+    Chart.defaults.font.family = "'Pretendard', -apple-system, BlinkMacSystemFont, 'Malgun Gothic', '맑은 고딕', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+}
+
 function updateFilterSummary(displayed, total) {
     if (!filterSummaryBadge) return;
     const pct = total > 0 ? Math.round((displayed / total) * 100) : 100;
@@ -1717,27 +1766,54 @@ function applyVisualization() {
 }
 
 // ════════════════════════════════════════════════════════════
-// 16. 이벤트 리스너
+// 16. 이벤트 리스너 & 파일 로더
 // ════════════════════════════════════════════════════════════
-csvUpload.addEventListener('change', (e) => {
-    const file = e.target.files[0];
+function loadAndParseCSVFile(file) {
     if (!file) return;
+    currentUploadedFile = file;
     fileNameDisplay.textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     statusIndicator.textContent = '● 로딩 중...';
     statusIndicator.className = 'status loading';
 
+    const encodingMode = csvEncodingSelect ? csvEncodingSelect.value : 'auto';
     const reader = new FileReader();
     reader.onload = evt => {
-        parsedData = parseCSV(evt.target.result);
-        if (!parsedData) {
-            statusIndicator.textContent = '● 파싱 실패';
+        try {
+            const buffer = evt.target.result;
+            const text = decodeCSVBuffer(buffer, encodingMode);
+            parsedData = parseCSV(text);
+            if (!parsedData) {
+                statusIndicator.textContent = '● 파싱 실패';
+                statusIndicator.className = 'status offline';
+                return;
+            }
+            processData(`📄 ${file.name}`);
+        } catch (err) {
+            console.error('CSV 읽기/디코딩 에러:', err);
+            statusIndicator.textContent = '● 인코딩 에러';
             statusIndicator.className = 'status offline';
-            return;
         }
-        processData(`📄 ${file.name}`);
     };
-    reader.readAsText(file);
+    reader.onerror = () => {
+        statusIndicator.textContent = '● 파일 읽기 실패';
+        statusIndicator.className = 'status offline';
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+csvUpload.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    loadAndParseCSVFile(file);
 });
+
+if (csvEncodingSelect) {
+    csvEncodingSelect.addEventListener('change', () => {
+        if (currentUploadedFile) {
+            loadAndParseCSVFile(currentUploadedFile);
+        }
+    });
+}
 
 const SAMPLE_CSV = `지역,매출,비용,이익
 서울,15000,8500,6500
