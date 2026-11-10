@@ -96,8 +96,8 @@ dirLight.shadow.camera.left = -20;
 dirLight.shadow.camera.right = 20;
 dirLight.shadow.camera.top = 20;
 dirLight.shadow.camera.bottom = -20;
-dirLight.shadow.bias = -0.0005;
-dirLight.shadow.normalBias = 0.05;
+dirLight.shadow.bias = -0.00005;
+dirLight.shadow.normalBias = 0.02;
 scene.add(dirLight);
 
 const pointLight = new THREE.PointLight(0x818cf8, 0.8, 50);

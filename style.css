@@ -588,38 +588,93 @@ input[type="color"] {
 #chart-wrapper canvas { max-height: 260px; }
 
 #data-table-container {
-    border-top: 1px solid rgba(99,102,241,0.15);
+    border-top: 1px solid rgba(99,102,241,0.2);
     padding-top: 8px;
 }
 #data-table-container h4 {
-    font-size: 12px; color: #94a3b8; margin-bottom: 6px;
+    font-size: 12px; color: #a5b4fc; margin-bottom: 6px; font-weight: 700;
 }
-#row-count { font-size: 10px; color: #475569; }
+#row-count { font-size: 10px; color: #94a3b8; font-weight: normal; }
 #data-table-scroll {
-    max-height: 140px; overflow-y: auto;
-    border-radius: 6px;
-    border: 1px solid rgba(99,102,241,0.1);
+    max-height: 180px;
+    overflow: auto; /* 상하/좌우 양방향 스크롤 허용 */
+    border-radius: 8px;
+    border: 1px solid rgba(99,102,241,0.25);
+    background: #0f172a;
+    position: relative;
 }
-#data-table-scroll::-webkit-scrollbar { width: 4px; }
+#data-table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 #data-table-scroll::-webkit-scrollbar-thumb {
-    background: rgba(99,102,241,0.25); border-radius: 2px;
+    background: rgba(99,102,241,0.4); border-radius: 3px;
+}
+#data-table-scroll::-webkit-scrollbar-thumb:hover {
+    background: #6366f1;
+}
+#data-table-scroll::-webkit-scrollbar-track {
+    background: rgba(15,23,42,0.8);
 }
 #data-table {
-    width: 100%; border-collapse: collapse; font-size: 11px;
+    width: max-content;
+    min-width: 100%;
+    border-collapse: separate; /* sticky 호환을 위한 분리형 보더 */
+    border-spacing: 0;
+    font-size: 11px;
+    line-height: 1.5;
+}
+#data-table th, #data-table td {
+    white-space: nowrap; /* 글자가 세로로 꺾여 행들이 겹치는 현상 완전 방지 */
+    padding: 7px 12px;
+    text-align: left;
 }
 #data-table th {
-    background: rgba(99,102,241,0.15); color: #a5b4fc;
-    padding: 5px 8px; text-align: left; font-weight: 600;
-    position: sticky; top: 0; z-index: 1;
+    background: #1e293b; /* 완전 불투명 배경: 스크롤 시 아래 행 텍스트가 비치거나 겹치지 않음 */
+    color: #c7d2fe;
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 2px solid #6366f1;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.35);
+}
+/* 첫 번째 열 고정 (틀 고정) */
+#data-table th:first-child {
+    position: sticky;
+    left: 0;
+    top: 0;
+    z-index: 20; /* 상단 헤더와 좌측 열 교차점 최상위 */
+    background: #1e293b;
+    border-right: 1.5px solid rgba(99,102,241,0.35);
+}
+#data-table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 5; /* 좌우 스크롤 시에도 첫 열(행정구역 등) 고정 */
+    background: #1e293b;
+    color: #f8fafc;
+    font-weight: 600;
+    border-right: 1.5px solid rgba(99,102,241,0.25);
 }
 #data-table td {
-    padding: 5px 8px; color: #cbd5e1;
-    border-bottom: 1px solid rgba(99,102,241,0.05);
+    color: #cbd5e1;
+    background: #0f172a;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1);
 }
-#data-table tr:hover td { background: rgba(99,102,241,0.08); }
+#data-table tr:nth-child(even) td {
+    background: #141f36; /* 짝수 행 구분 배경 */
+}
+#data-table tr:nth-child(even) td:first-child {
+    background: #192744;
+}
+#data-table tr:hover td {
+    background: rgba(99,102,241,0.22) !important;
+}
 #data-table tr.selected td {
-    background: rgba(99,102,241,0.2) !important;
-    color: #f1f5f9;
+    background: rgba(99,102,241,0.45) !important;
+    color: #ffffff;
+    font-weight: 600;
+}
+#chart-panel.maximized #data-table-scroll {
+    max-height: 280px;
 }
 
 /* ===============================
