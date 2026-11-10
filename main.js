@@ -581,7 +581,31 @@ function initAccordion() {
         });
     });
 }
-initAccordion();
+// Enable dragging of the Settings panel on both mouse and touch (mobile) using Pointer Events
+const settingsPanel = $('settings-section');
+const settingsHeader = $('settings-header');
+if (settingsPanel && settingsHeader) {
+    // Prevent default touch actions like scrolling when dragging the header
+    settingsHeader.style.touchAction = 'none';
+    settingsHeader.addEventListener('pointerdown', (e) => {
+        // Only respond to primary button / touch
+        if (e.button !== 0 && e.pointerType !== 'touch') return;
+        const rect = settingsPanel.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+        const onMove = (ev) => {
+            settingsPanel.style.left = `${ev.clientX - offsetX}px`;
+            settingsPanel.style.top = `${ev.clientY - offsetY}px`;
+        };
+        const onUp = () => {
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onUp);
+        };
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+    });
+}
+
 
 // ════════════════════════════════════════════════════════════
 // 메뉴 패널 완벽 스크롤 엔진 (마우스 휠 + 터치 드래그 + 마우스 드래그)

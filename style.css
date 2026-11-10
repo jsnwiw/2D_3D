@@ -1397,10 +1397,23 @@ input[type="color"] {
     .control-group input[type="range"] {
         max-width: 100%;
     }
-    /* Accordion items: ensure they fit */
-    .accordion-item {
-        width: 100%;
-    }
+    /* Draggable panel for settings (mobile) */
+.draggable-panel {
+    position: absolute;
+    top: 80px; /* initial offset */
+    left: 10px;
+    width: 320px;
+    max-width: 90vw;
+    z-index: 30;
+    cursor: move;
+    /* keep glass‑morphism background */
+    background: rgba(15, 23, 42, 0.94);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
     /* Tooltip font size for readability */
     .tooltip-3d {
         font-size: 12px;
