@@ -57,27 +57,27 @@
     <!-- 독립 파일 업로드 패널 (메뉴창 밖 분리) -->
     <div id="upload-panel" class="upload-card">
         <div class="upload-card-top">
-            <span class="upload-badge">📂 데이터 소스</span>
-            <span id="file-name" class="file-name-text">파일을 선택해주세요</span>
+            <span class="upload-badge">📂 데이터 소스 (Data Source)</span>
+            <span id="file-name" class="file-name-text">파일을 선택해주세요 (Please select a file)</span>
         </div>
         <div class="upload-btn-group">
             <label for="csv-upload" class="upload-btn">
-                📁 CSV 파일 선택
+                📁 CSV 파일 선택 (Select CSV)
                 <input type="file" id="csv-upload" accept=".csv">
             </label>
-            <button type="button" id="btn-load-sample" class="sample-btn" title="기본 샘플 데이터 즉시 불러오기">
-                📋 샘플
+            <button type="button" id="btn-load-sample" class="sample-btn" title="기본 샘플 데이터 즉시 불러오기 / Load Sample">
+                📋 샘플 (Sample)
             </button>
             <button type="button" id="btn-gpu-benchmark" class="sample-btn benchmark-btn" title="Vulkan/WebGPU 저수준 가속 성능 체감 (대량 데이터 1,000건 렌더링)">
-                ⚡ GPU 벤치
+                ⚡ GPU 벤치 (Benchmark)
             </button>
         </div>
         <div class="upload-encoding-row" style="margin-top: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px;">
-            <label for="csv-encoding-select" style="font-size: 11px; color: #94a3b8; font-weight: 600; white-space: nowrap;">인코딩:</label>
+            <label for="csv-encoding-select" style="font-size: 11px; color: #94a3b8; font-weight: 600; white-space: nowrap;">인코딩 (Encoding):</label>
             <select id="csv-encoding-select" style="flex: 1; padding: 4px 6px; font-size: 11px; background: rgba(30,41,59,0.9); border: 1px solid rgba(99,102,241,0.3); border-radius: 6px; color: #e2e8f0; cursor: pointer;">
-                <option value="auto">🤖 한글 자동 감지 (UTF-8 / EUC-KR)</option>
-                <option value="euc-kr">🇰🇷 EUC-KR / CP949 (한국 엑셀)</option>
-                <option value="utf-8">🌐 UTF-8 (표준)</option>
+                <option value="auto">🤖 한글 자동 감지 (Auto UTF-8 / EUC-KR)</option>
+                <option value="euc-kr">🇰🇷 EUC-KR / CP949 (한국 엑셀 / Korean Excel)</option>
+                <option value="utf-8">🌐 UTF-8 (표준 / Standard)</option>
             </select>
         </div>
     </div>
@@ -316,17 +316,17 @@
     <!-- 2D 차트 패널 (좌측 하단) -->
     <div id="chart-panel" style="display:none;">
         <div id="chart-header">
-            <h3 id="chart-title">2D 보조 분석 차트</h3>
+            <h3 id="chart-title">2D 보조 분석 차트 (2D Chart)</h3>
             <div>
-                <button id="chart-maximize-btn" class="panel-ctrl-btn" title="확대">⛶</button>
-                <button id="chart-close-btn" class="panel-ctrl-btn close" title="닫기">✕</button>
+                <button id="chart-maximize-btn" class="panel-ctrl-btn" title="확대 / Maximize">⛶</button>
+                <button id="chart-close-btn" class="panel-ctrl-btn close" title="닫기 / Close">✕</button>
             </div>
         </div>
         <div id="chart-wrapper">
             <canvas id="chart-2d"></canvas>
         </div>
         <div id="data-table-container">
-            <h4>📄 데이터 표 <span id="row-count"></span></h4>
+            <h4>📄 데이터 표 (Data Table) <span id="row-count"></span></h4>
             <div id="data-table-scroll">
                 <table id="data-table"></table>
             </div>

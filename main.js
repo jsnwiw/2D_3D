@@ -588,7 +588,7 @@ if (btnGpuBenchmark) {
             headers: ['항목명', '측정값'],
             rows: benchmarkRows
         };
-        if (fileNameDisplay) fileNameDisplay.textContent = `⚡ GPU_Benchmark_500pts.csv (${rowCount}건)`;
+        if (fileNameDisplay) fileNameDisplay.textContent = `⚡ gpu_benchmark_500pts.csv (GPU 벤치마크 데이터 / GPU Benchmark Data - ${rowCount}건)`;
         if (chartTypeSelect) chartTypeSelect.value = 'scatter';
         if (limitSelect) limitSelect.value = 'all';
 
@@ -599,7 +599,7 @@ if (btnGpuBenchmark) {
 
         if (statusIndicator) {
             statusIndicator.className = 'status online';
-            statusIndicator.textContent = `⚡ 벤치마크 렌더링 중 (${rowCount}개)`;
+            statusIndicator.textContent = `⚡ 벤치마크 렌더링 중 / Benchmark Active (${rowCount}개)`;
         }
     });
 }
@@ -1106,7 +1106,7 @@ function renderDataTable(data, highlightRow = -1) {
     });
     html += '</tbody>';
     table.innerHTML = html;
-    rowCountEl.textContent = `(${data.rows.length}행 중 ${Math.min(max, data.rows.length)}행)`;
+    rowCountEl.textContent = `(${data.rows.length}행 중 ${Math.min(max, data.rows.length)}행 / ${Math.min(max, data.rows.length)} of ${data.rows.length} rows)`;
 
     table.querySelectorAll('tbody tr').forEach(tr => {
         tr.addEventListener('click', () => {
@@ -2046,8 +2046,8 @@ function applyVisualization() {
 function loadAndParseCSVFile(file) {
     if (!file) return;
     currentUploadedFile = file;
-    fileNameDisplay.textContent = `📄 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-    statusIndicator.textContent = '● 로딩 중...';
+    fileNameDisplay.textContent = `📄 ${file.name} (업로드 파일 / Uploaded File - ${(file.size / 1024).toFixed(1)} KB)`;
+    statusIndicator.textContent = '● 로딩 중... / Loading...';
     statusIndicator.className = 'status loading';
 
     const encodingMode = csvEncodingSelect ? csvEncodingSelect.value : 'auto';
@@ -2058,19 +2058,19 @@ function loadAndParseCSVFile(file) {
             const text = decodeCSVBuffer(buffer, encodingMode);
             parsedData = parseCSV(text);
             if (!parsedData) {
-                statusIndicator.textContent = '● 파싱 실패';
+                statusIndicator.textContent = '● 파싱 실패 / Parsing Failed';
                 statusIndicator.className = 'status offline';
                 return;
             }
-            processData(`📄 ${file.name}`);
+            processData(`📄 ${file.name} (사용자 파일 / User File)`);
         } catch (err) {
             console.error('CSV 읽기/디코딩 에러:', err);
-            statusIndicator.textContent = '● 인코딩 에러';
+            statusIndicator.textContent = '● 인코딩 에러 / Encoding Error';
             statusIndicator.className = 'status offline';
         }
     };
     reader.onerror = () => {
-        statusIndicator.textContent = '● 파일 읽기 실패';
+        statusIndicator.textContent = '● 파일 읽기 실패 / File Read Error';
         statusIndicator.className = 'status offline';
     };
     reader.readAsArrayBuffer(file);
@@ -2105,8 +2105,8 @@ const SAMPLE_CSV = `지역,매출,비용,이익
 btnLoadSample?.addEventListener('click', () => {
     parsedData = parseCSV(SAMPLE_CSV);
     if (!parsedData) return;
-    fileNameDisplay.textContent = 'sample_data.csv (기본 샘플)';
-    processData('기본 샘플 데이터');
+    fileNameDisplay.textContent = '📄 sample_data.csv (기본 샘플 데이터 / Default Sample Data)';
+    processData('기본 샘플 데이터 / Default Sample Data');
 });
 
 function processData(sourceName) {
