@@ -1,10 +1,15 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+    <!-- 문서 문자 인코딩 설정 (표준 UTF-8) -->
     <meta charset="UTF-8">
+    <!-- 모바일 및 다양한 디바이스 뷰포트 반응형 설정 (화면 배율 및 터치 고정) -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3D 데이터 시각화 대시보드</title>
-    <!-- PWA 설정 (모바일 홈화면 앱) -->
+
+    <!-- =======================================================
+         PWA(Progressive Web App) 모바일 홈화면 설치 및 테마 설정
+         ======================================================= -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,34 +18,44 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="icon" type="image/png" href="icon-192.png">
 
+    <!-- 외부 스타일시트 및 서드파티 라이브러리 CDN -->
     <link rel="stylesheet" href="style.css">
+    <!-- 2D 보조 차트 렌더링 라이브러리 (Chart.js v4) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <!-- 엑셀(.xlsx, .xls) 파싱 지원 SheetJS -->
+    <!-- 엑셀(.xlsx, .xls) 바이너리 파싱 지원 SheetJS 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-    <!-- 3D 뷰포트 -->
+    <!-- =======================================================
+         1. 3D 뷰포트 메인 컨테이너 (Three.js WebGL/WebGPU 캔버스 렌더링)
+         ======================================================= -->
     <div id="canvas-container"></div>
 
-    <!-- 3D → 2D 동기화 플로팅 툴팁 (호버 시 표시) -->
+    <!-- 3D → 2D 동기화 플로팅 툴팁 (3D 메쉬 마우스 호버 시 화면 좌표 추적 표시) -->
     <div id="hover-tooltip" class="tooltip-3d" style="display:none;">
         <div id="tooltip-name"></div>
         <div id="tooltip-value"></div>
     </div>
 
-    <!-- 3D → 2D 동기화 라벨 컨테이너 -->
+    <!-- 3D → 2D 동기화 라벨 레이어 (3D 월드 좌표에 고정되는 텍스트 태그 컨테이너) -->
     <div id="label-layer"></div>
 
-    <!-- 상단 컨트롤 바 -->
+    <!-- =======================================================
+         2. 상단 글로벌 컨트롤 바 (카메라 시점 제어, 도구 및 상태 버튼)
+         ======================================================= -->
     <header id="top-bar">
+        <!-- 상단 바 좌측: 서비스 타이틀 및 GPU 엔진 상태 뱃지 -->
         <div class="top-bar-left">
             <h1>📊 3D 데이터 시각화</h1>
             <span id="status-indicator" class="status offline">● 대기 중</span>
+            <!-- 차세대 저수준 가속 파이프라인(WebGPU/Vulkan) 확인 모달 트리거 -->
             <button id="gpu-engine-badge" class="gpu-badge" title="GPU 가속 엔진 상태 (클릭하여 사양 확인)">
                 <span class="gpu-dot"></span>
                 <span id="gpu-engine-text">⚡ Vulkan / WebGPU</span>
             </button>
         </div>
+
+        <!-- 상단 바 우측: 카메라 뷰포트 프리셋 및 편의 기능 버튼 그룹 -->
         <div class="top-bar-right">
             <button id="btn-auto-rotate" title="3D 자동 회전 뷰">🔄 회전</button>
             <button id="btn-reset-camera" title="카메라 리셋">🎥 기본</button>
@@ -57,18 +72,22 @@
         </div>
     </header>
 
-    <!-- 독립 파일 업로드 패널 (메뉴창 밖 분리) -->
+    <!-- =======================================================
+         3. 독립 데이터 소스 파일 업로드 패널 (메뉴창과 분리된 상단 카드)
+         ======================================================= -->
     <div id="upload-panel" class="upload-card">
         <div class="upload-card-top">
             <span class="upload-badge">📂 데이터 소스 (Data Source)</span>
             <span id="file-name" class="file-name-text">파일을 선택해주세요 (Please select a file)</span>
         </div>
         <div class="upload-btn-group">
+            <!-- CSV 및 엑셀 파일 선택 버튼 -->
             <label for="csv-upload" class="upload-btn" title="CSV 또는 엑셀(.xlsx, .xls) 파일 선택">
                 📁 파일 선택 (CSV / 엑셀 파일 업로드)
                 <input type="file" id="csv-upload" accept=".csv, .xlsx, .xls">
             </label>
         </div>
+        <!-- 한국어 엑셀(EUC-KR/CP949) 및 표준(UTF-8) 인코딩 선택 셀렉트박스 -->
         <div class="upload-encoding-row">
             <label for="csv-encoding-select">인코딩 (Encoding):</label>
             <select id="csv-encoding-select">
@@ -79,8 +98,11 @@
         </div>
     </div>
 
-    <!-- 우측 메뉴 패널 (업로드 제외한 모든 상세/분석/시각화/필터/환경 설정 포함) -->
+    <!-- =======================================================
+         4. 우측 슬라이딩 대시보드 메뉴 패널 (아코디언 UI 구조)
+         ======================================================= -->
     <aside id="menu-panel" class="menu-drawer open" tabindex="0" title="선택/호버 시 마우스 휠 및 터치로 스크롤 가능">
+        <!-- 메뉴 패널 헤더: 최상단/최하단 이동 및 닫기 버튼 -->
         <div class="menu-header">
             <div class="menu-header-left">
                 <h3>⚙️ 대시보드 메뉴</h3>
@@ -93,7 +115,7 @@
         </div>
 
         <div class="menu-content">
-            <!-- 1. 선택된 개체 상세 카드 섹션 -->
+            <!-- [섹션 1] 선택된 개체 상세 카드 (3D 오브젝트 클릭 시 동적 표시) -->
             <div class="accordion-item" id="detail-card-section" style="display:none;">
                 <div class="accordion-header" data-target="detail-card-body">
                     <span class="header-title">📌 선택된 항목 상세</span>
@@ -103,6 +125,7 @@
                     <div id="detail-card">
                         <div id="detail-name"></div>
                         <div id="detail-stats"></div>
+                        <!-- 선택 항목과 전체 평균을 비교하는 미니 차트 -->
                         <div id="detail-mini-chart-container">
                             <canvas id="detail-mini-chart" height="120"></canvas>
                         </div>
@@ -110,26 +133,28 @@
                 </div>
             </div>
 
-            <!-- 2. 분석 결과 & AI 인사이트 섹션 -->
+            <!-- [섹션 2] AI 인사이트 & 통계 분석 (이상치 탐지, 파레토 집중도, 자연어 요약) -->
             <div class="accordion-item" id="analysis-section" style="display:none;">
                 <div class="accordion-header" data-target="analysis-body">
                     <span class="header-title">✨ AI 인사이트 & 통계 분석</span>
                     <span class="chevron">▾</span>
                 </div>
                 <div class="accordion-body" id="analysis-body">
+                    <!-- AI 이상치/통계 요약 메시지 박스 -->
                     <div id="ai-insight-box"></div>
+                    <!-- 컬럼별 수치 통계 분석 결과 표출 컨테이너 -->
                     <div id="analysis-result"></div>
                 </div>
             </div>
 
-            <!-- 3. 시각화 설정 섹션 -->
+            <!-- [섹션 3] 시각화 축 설정 & 3D/2D 차트 형태 선택 -->
             <div class="accordion-item active" id="viz-section" style="display:none;">
                 <div class="accordion-header active" data-target="viz-body">
                     <span class="header-title">🎨 시각화 설정 & 추천</span>
                     <span class="chevron">▴</span>
                 </div>
                 <div class="accordion-body open" id="viz-body">
-                    <!-- 추천 시각화 자동 적용 안내 -->
+                    <!-- 스마트 AI 추천 시각화 자동 적용 안내 및 수동 적용 버튼 -->
                     <div class="auto-recommend-box">
                         <div class="recommend-toggle-row">
                             <label for="auto-recommend-toggle" class="recommend-toggle-label">
@@ -146,14 +171,17 @@
                         </button>
                     </div>
 
+                    <!-- X축 (라벨/카테고리/기준축) 선택 -->
                     <div class="control-group">
                         <label for="x-axis-select"><strong>X축 (라벨/기준):</strong></label>
                         <select id="x-axis-select"></select>
                     </div>
+                    <!-- Y축 (수치 데이터/지표축) 선택 -->
                     <div class="control-group">
                         <label for="y-axis-select"><strong>Y축 (수치/지표):</strong></label>
                         <select id="y-axis-select"></select>
                     </div>
+                    <!-- 10종 3D 시각화 지오메트리 스타일 선택 -->
                     <div class="control-group">
                         <label for="bar-style"><strong>🧊 3D 시각화 스타일:</strong></label>
                         <select id="bar-style">
@@ -169,6 +197,7 @@
                             <option value="surface">🌊 3D 곡면 서피스 (지형 맵)</option>
                         </select>
                     </div>
+                    <!-- 8종 2D 보조 차트 스타일 선택 -->
                     <div class="control-group">
                         <label for="chart-type-select"><strong>📊 2D 보조 차트:</strong></label>
                         <select id="chart-type-select">
@@ -187,23 +216,23 @@
                 </div>
             </div>
 
-            <!-- 4. 필터링 섹션 -->
+            <!-- [섹션 4] 데이터 필터링 & 검색 & 정렬 -->
             <div class="accordion-item" id="filter-section" style="display:none;">
                 <div class="accordion-header" data-target="filter-body">
                     <span class="header-title">🔍 데이터 필터링 & 정렬</span>
                     <span class="chevron">▾</span>
                 </div>
                 <div class="accordion-body" id="filter-body">
-                    <!-- 필터 요약 배지 -->
+                    <!-- 현재 필터 상태 및 표시 데이터 개수 요약 배지 -->
                     <div id="filter-summary-badge" class="filter-count-badge">📊 표시: 전체 데이터</div>
 
-                    <!-- 1. 키워드 검색 필터 -->
+                    <!-- 1. 항목명 실시간 키워드 검색 -->
                     <div class="control-group">
                         <label for="filter-keyword">🔎 항목명 / 라벨 실시간 검색:</label>
                         <input type="text" id="filter-keyword" placeholder="검색할 항목명 입력..." style="background: rgba(15, 23, 42, 0.75);">
                     </div>
 
-                    <!-- 2. 대용량 데이터 표시 개수 제한 (Top N) -->
+                    <!-- 2. 대용량 데이터 표시 개수 제한 (Top N 렌더링 최적화) -->
                     <div class="control-group">
                         <label for="limit-select"><strong>📊 표시 데이터 개수 제한 (대용량 최적화):</strong></label>
                         <select id="limit-select" style="border: 1.5px solid #10b981; font-weight: 600;">
@@ -216,7 +245,7 @@
                         </select>
                     </div>
 
-                    <!-- 3. 빠른 퀵 필터 버튼 -->
+                    <!-- 3. 원클릭 퀵 필터 버튼 그룹 -->
                     <div class="control-group">
                         <label>⚡ 빠른 퀵 필터:</label>
                         <div class="quick-filter-group" style="display:flex; flex-wrap:wrap; gap:4px;">
@@ -227,7 +256,7 @@
                         </div>
                     </div>
 
-                    <!-- 4. 카테고리 개별 필터 -->
+                    <!-- 4. 카테고리 개별 선택 필터 -->
                     <div class="control-group">
                         <label for="data-filter">카테고리 개별 필터:</label>
                         <select id="data-filter">
@@ -235,7 +264,7 @@
                         </select>
                     </div>
 
-                    <!-- 5. 수치 범위 필터 -->
+                    <!-- 5. 수치 범위 (Min ~ Max) 슬라이더/인풋 필터 -->
                     <div class="control-group">
                         <label for="range-min">수치 범위 필터:</label>
                         <div class="range-row">
@@ -246,7 +275,7 @@
                         </div>
                     </div>
 
-                    <!-- 6. 정렬 기준 -->
+                    <!-- 6. 데이터 정렬 기준 (원본, 내림차순, 오름차순) -->
                     <div class="control-group">
                         <label for="sort-select">정렬 기준:</label>
                         <select id="sort-select">
@@ -258,14 +287,14 @@
                 </div>
             </div>
 
-            <!-- 5. 3D 환경 & 조명 설정 섹션 -->
+            <!-- [섹션 5] 정밀 3D 조명 및 환경 튜닝 설정 -->
             <div class="accordion-item" id="settings-section">
                 <div class="accordion-header" data-target="settings-body">
                     <span class="header-title">⚙️ 3D 환경 & 조명 설정</span>
                     <span class="chevron">▾</span>
                 </div>
                 <div class="accordion-body" id="settings-body">
-                    <!-- 1. 환경광 -->
+                    <!-- 1. 환경광 (Ambient Light) 강도 조절 -->
                     <div class="control-group">
                         <div class="slider-label-row">
                             <label for="ambient-intensity">💡 환경광 강도 (Ambient):</label>
@@ -274,7 +303,7 @@
                         <input type="range" id="ambient-intensity" min="0" max="2" step="0.1" value="0.8">
                     </div>
 
-                    <!-- 2. 직사광 (태양광) -->
+                    <!-- 2. 직사광/태양광 (Directional Light) 강도 조절 -->
                     <div class="control-group">
                         <div class="slider-label-row">
                             <label for="dir-intensity">☀️ 직사광 강도 (Sunlight):</label>
@@ -283,7 +312,7 @@
                         <input type="range" id="dir-intensity" min="0" max="3" step="0.1" value="0.9">
                     </div>
 
-                    <!-- 3. 포인트 라이트 -->
+                    <!-- 3. 포인트 라이트 (Point Light) 강도 조절 -->
                     <div class="control-group">
                         <div class="slider-label-row">
                             <label for="point-intensity">🔦 포인트 라이트 강도:</label>
@@ -292,7 +321,7 @@
                         <input type="range" id="point-intensity" min="0" max="3" step="0.1" value="0.8">
                     </div>
 
-                    <!-- 4. 포인트 라이트 색상 -->
+                    <!-- 4. 포인트 라이트 색상 틴트 변경 -->
                     <div class="control-group">
                         <label for="point-color">🔦 포인트 라이트 색상:</label>
                         <div class="range-row">
@@ -301,7 +330,7 @@
                         </div>
                     </div>
 
-                    <!-- 5. 화면 전체 노출 (Exposure) -->
+                    <!-- 5. 카메라 센서 전체 화면 노출(Exposure) 조절 -->
                     <div class="control-group">
                         <div class="slider-label-row">
                             <label for="exposure-intensity">📸 화면 노출 밝기 (Exposure):</label>
@@ -310,7 +339,7 @@
                         <input type="range" id="exposure-intensity" min="0.2" max="2.5" step="0.1" value="1.1">
                     </div>
 
-                    <!-- 6. 카메라 시야각 FOV -->
+                    <!-- 6. 카메라 시야각 FOV (Field of View) 광각/망원 원근 조절 -->
                     <div class="control-group">
                         <div class="slider-label-row">
                             <label for="camera-fov">🎥 카메라 시야각 (FOV):</label>
@@ -319,7 +348,7 @@
                         <input type="range" id="camera-fov" min="30" max="100" step="1" value="55">
                     </div>
 
-                    <!-- 7. 배경 안개(Fog) 밀도 -->
+                    <!-- 7. 공간 안개(Fog) 밀도 제어 -->
                     <div class="control-group">
                         <div class="slider-label-row">
                             <label for="fog-density">🌫️ 공간 안개 밀도 (Fog):</label>
@@ -328,7 +357,7 @@
                         <input type="range" id="fog-density" min="0" max="0.06" step="0.005" value="0.015">
                     </div>
 
-                    <!-- 8. 그림자 효과 토글 -->
+                    <!-- 8. 실시간 부드러운 그림자 On/Off 토글 -->
                     <div class="control-group">
                         <label for="shadow-toggle" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;">
                             <span>🌓 실시간 입체 그림자 (Shadows):</span>
@@ -336,13 +365,13 @@
                         </label>
                     </div>
 
-                    <!-- 9. 배경색 -->
+                    <!-- 9. 3D 뷰포트 배경색 커스텀 지정 -->
                     <div class="control-group">
                         <label for="bg-color">🖼️ 배경색 (Background):</label>
                         <input type="color" id="bg-color" value="#f1f5f9">
                     </div>
 
-                    <!-- 10. 3D 색상 테마 -->
+                    <!-- 10. 3D 메쉬 그라디언트 테마 (10종 프리셋 + HEX 직접 입력) -->
                     <div class="control-group">
                         <label for="color-theme-select">🎨 3D 색상 테마:</label>
                         <select id="color-theme-select">
@@ -359,6 +388,7 @@
                             <option value="custom">✏️ 직접 색상 코드 지정 (HEX)</option>
                         </select>
                     </div>
+                    <!-- HEX 코드 직접 지정 시 나타나는 커스텀 컬러 패널 -->
                     <div class="control-group" id="custom-color-group" style="display:none; background: rgba(99,102,241,0.12); padding: 10px 12px; border-radius: 8px; border: 1.5px solid rgba(99,102,241,0.35); margin-top: 4px;">
                         <label for="custom-theme-color-picker" style="color: #a5b4fc; font-weight:700; font-size:12px;">🎨 색상 코드 (HEX) 직접 지정:</label>
                         <div class="range-row" style="margin-top: 6px;">
@@ -368,7 +398,7 @@
                         </div>
                     </div>
 
-                    <!-- 11. 기본값 복원 버튼 -->
+                    <!-- 11. 조명 및 환경값 원클릭 기본값 리셋 버튼 -->
                     <button type="button" id="btn-reset-lighting" class="small-btn" style="width:100%; margin-top: 10px; padding: 7px; color: #a5b4fc; border-color: rgba(99,102,241,0.4);">
                         🔄 조명 & 환경설정 기본값 복원
                     </button>
@@ -378,7 +408,9 @@
         </div>
     </aside>
 
-    <!-- 2D 차트 패널 (좌측 하단) -->
+    <!-- =======================================================
+         5. 좌측 하단 2D 차트 & 데이터 테이블 뷰어 패널
+         ======================================================= -->
     <div id="chart-panel" style="display:none;">
         <div id="chart-header">
             <h3 id="chart-title">2D 보조 분석 차트 (2D Chart)</h3>
@@ -387,9 +419,11 @@
                 <button id="chart-close-btn" class="panel-ctrl-btn close" title="닫기 / Close">✕</button>
             </div>
         </div>
+        <!-- Chart.js 캔버스 영역 -->
         <div id="chart-wrapper">
             <canvas id="chart-2d"></canvas>
         </div>
+        <!-- 원본 데이터 행렬 및 다축 틀고정(Sticky) 테이블 -->
         <div id="data-table-container">
             <h4>📄 데이터 표 (Data Table) <span id="row-count"></span></h4>
             <div id="data-table-scroll">
@@ -398,7 +432,9 @@
         </div>
     </div>
 
-    <!-- 하단 시계열/다차원 타임슬라이더 플레이어 (화면 하단 중앙 고정 플로팅 바) -->
+    <!-- =======================================================
+         6. 화면 하단 중앙 고정: 시계열 다차원 타임슬라이더 플레이어
+         ======================================================= -->
     <div id="time-player-bar" class="time-player-panel" style="display:none;">
         <div class="time-player-header">
             <div class="time-player-info">
@@ -409,6 +445,7 @@
             </div>
             <button type="button" id="btn-close-time-player" class="time-close-btn" title="타임라인 닫기">✕</button>
         </div>
+        <!-- 재생/정지, 단계 이동 및 속도 선택 컨트롤러 -->
         <div class="time-player-controls">
             <button type="button" id="btn-time-prev" class="time-btn" title="이전 컬럼">⏮</button>
             <button type="button" id="btn-time-play" class="time-btn play-btn" title="재생 / 일시정지">▶ 재생</button>
@@ -426,10 +463,14 @@
         </div>
     </div>
 
-    <!-- 알림 토스트 (캡처 완료 / 메시지 안내) -->
+    <!-- =======================================================
+         7. 알림 토스트 팝업 (캡처 완료, 파일 로드 상태 메시지)
+         ======================================================= -->
     <div id="toast-notification" class="toast-popup" style="display:none;"></div>
 
-    <!-- 전체화면 드래그 앤 드롭 안내 오버레이 -->
+    <!-- =======================================================
+         8. 브라우저 전체화면 드래그 앤 드롭 안내 오버레이
+         ======================================================= -->
     <div id="drag-drop-overlay" class="drag-drop-overlay" style="display:none;">
         <div class="drag-drop-card">
             <div class="drag-drop-icon">📂</div>
@@ -438,10 +479,14 @@
         </div>
     </div>
 
-    <!-- A4 인쇄 / PDF 요약 보고서 출력용 전용 컨테이너 (인쇄 시 활성화) -->
+    <!-- =======================================================
+         9. A4 요약 분석 보고서 출력용 인쇄 전용 템플릿 뷰
+         ======================================================= -->
     <div id="print-report-container" class="print-report-view" style="display:none;"></div>
 
-    <!-- GPU 엔진 정보 팝업 모달 -->
+    <!-- =======================================================
+         10. 차세대 GPU 엔진(Vulkan / WebGPU) 하드웨어 사양 모달
+         ======================================================= -->
     <div id="gpu-info-modal" class="modal-backdrop" style="display:none;">
         <div class="modal-card">
             <div class="modal-header">
@@ -478,6 +523,7 @@
                         <span class="info-val performance" id="modal-gpu-fps">60 FPS (16.6 ms)</span>
                     </div>
                 </div>
+                <!-- WebGPU & Vulkan 저수준 아키텍처 설명 박스 -->
                 <div class="gpu-tech-note">
                     <div class="note-title">💡 Vulkan & WebGPU 차세대 가속 원리</div>
                     <p>현재 웹사이트는 최신 <strong>WebGPU</strong> 표준을 통해 Windows의 <strong>Vulkan / Direct3D 12</strong> 저수준 GPU 파이프라인과 직접 통신합니다. 기존 WebGL 대비 드라이버 오버헤드를 대폭 줄이고, 수만 개의 3D 데이터 오브젝트도 지연 없이 60fps 이상으로 부드럽게 렌더링합니다.</p>
@@ -486,7 +532,9 @@
         </div>
     </div>
 
-    <!-- Three.js -->
+    <!-- =======================================================
+         11. Three.js 모듈 Import Map 설정 및 메인 로직 로드
+         ======================================================= -->
     <script type="importmap">
         {
             "imports": {
@@ -495,9 +543,10 @@
             }
         }
     </script>
+    <!-- ES6 모듈 방식으로 메인 자바스크립트 실행 -->
     <script type="module" src="main.js"></script>
     <script>
-        // PWA 서비스 워커 등록
+        // PWA 서비스 워커(Service Worker) 자동 등록 스크립트
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js').catch(err => {

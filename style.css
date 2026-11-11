@@ -1,64 +1,105 @@
-/* ===============================
-   기본 초기화 & 전역 스타일
-   =============================== */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/**
+ * ==============================================================================
+ * [style.css] 3D 데이터 시각화 웹 플랫폼 - 마스터 스타일시트 (Master Stylesheet)
+ * ==============================================================================
+ * 
+ * [목차 (Table of Contents)]
+ * 1. 기본 초기화 & 전역 타이포그래피 (Reset & Typography)
+ * 2. 3D 뷰포트 & 캔버스 컨테이너 (Three.js Viewport)
+ * 3. 3D → 2D 실시간 플로팅 툴팁 & 월드 라벨 레이어 (Tooltips & Labels)
+ * 4. 상단 글로벌 컨트롤 바 & GPU 상태 뱃지 (Top Control Bar & Badges)
+ * 5. 독립 데이터 소스 파일 업로드 카드 (Upload Panel & Encodings)
+ * 6. 우측 슬라이딩 대시보드 메뉴 드로어 (Sidebar Menu Drawer)
+ * 7. 아코디언 UI & 카드 컴포넌트 (Accordion & Card System)
+ * 8. 필터링, 정렬 & 슬라이더 컨트롤 그룹 (Filters & Sliders)
+ * 9. 좌측 2D 보조 차트 & 양방향 틀고정 데이터 테이블 (2D Chart & Sticky Table)
+ * 10. 하단 시계열 다차원 타임슬라이더 플레이어 (Time Player Bar)
+ * 11. 화면 전체 드래그 앤 드롭 오버레이 (Drag & Drop Overlay)
+ * 12. GPU 엔진 사양 팝업 모달 (Hardware Spec Modal)
+ * 13. 알림 토스트 팝업 (Toast Notifications)
+ * 14. A4 분석 보고서 전용 인쇄 스타일 (@media print & Report View)
+ * 15. 모바일 반응형 미디어 쿼리 (@media max-width: 600px)
+ * ==============================================================================
+ */
+
+/* ==============================================================================
+   1. 기본 초기화 & 전역 타이포그래피 (Reset & Typography)
+   ============================================================================== */
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; /* 패딩과 테두리를 요소 너비에 포함 */
+}
 
 body, html {
-    width: 100%; height: 100%;
-
+    width: 100%; 
+    height: 100%;
+    /* 시스템 폰트 및 웹폰트 스택 */
     font-family: 'Pretendard', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0f172a;
-    color: #e2e8f0;
-    -webkit-font-smoothing: antialiased;
+    background: #0f172a; /* 딥 슬레이트 다크 배경색 */
+    color: #e2e8f0;      /* 가독성 높은 연회색 본문 글자색 */
+    -webkit-font-smoothing: antialiased; /* 폰트 렌더링 안티앨리어싱 */
 }
 
-/* ===============================
-   3D 뷰포트
-   =============================== */
+/* ==============================================================================
+   2. 3D 뷰포트 & 캔버스 컨테이너 (Three.js Viewport)
+   ============================================================================== */
 #canvas-container {
-    position: absolute; top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: 1;
-    cursor: grab;
+    position: absolute; 
+    top: 0; 
+    left: 0;
+    width: 100%; 
+    height: 100%;
+    z-index: 1; /* 모든 UI의 가장 아래 레이어로 배치 */
+    cursor: grab; /* 마우스 드래그 회전 가능 커서 */
 }
-#canvas-container:active { cursor: grabbing; }
+#canvas-container:active { 
+    cursor: grabbing; /* 클릭/드래그 중 손잡기 커서 */
+}
 
-/* ===============================
-   3D → 2D 플로팅 툴팁
-   =============================== */
+/* ==============================================================================
+   3. 3D → 2D 실시간 플로팅 툴팁 & 월드 라벨 레이어 (Tooltips & Labels)
+   ============================================================================== */
+/* 3D 메쉬 호버 시 마우스 커서 위치를 따라다니는 글래스모피즘 툴팁 */
 .tooltip-3d {
-    position: absolute; z-index: 100;
-    background: rgba(15, 23, 42, 0.96);
-    border: 1px solid rgba(99, 102, 241, 0.5);
+    position: absolute; 
+    z-index: 100;
+    background: rgba(15, 23, 42, 0.96); /* 반투명 다크 배경 */
+    border: 1px solid rgba(99, 102, 241, 0.5); /* 인디고 하이라이트 테두리 */
     border-radius: 10px;
     padding: 10px 14px;
-    pointer-events: none;
-    backdrop-filter: blur(12px);
+    pointer-events: none; /* 툴팁이 마우스 클릭/호버 이벤트를 가로채지 않도록 차단 */
+    backdrop-filter: blur(12px); /* 배경 블러 효과 */
     box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 30px rgba(99,102,241,0.15);
     transition: opacity 0.15s;
     min-width: 120px;
 }
 #tooltip-name {
-    font-size: 13px; font-weight: 700;
-    color: #a5b4fc; margin-bottom: 4px;
+    font-size: 13px; 
+    font-weight: 700;
+    color: #a5b4fc; 
+    margin-bottom: 4px;
 }
 #tooltip-value {
-    font-size: 18px; font-weight: 800;
+    font-size: 18px; 
+    font-weight: 800;
     color: #f1f5f9;
 }
 
-/* ===============================
-   3D → 2D 동기화 라벨
-   =============================== */
+/* 3D 메쉬 머리 위에 투영되는 텍스트 라벨 컨테이너 */
 #label-layer {
-    position: absolute; top: 0; left: 0;
-    width: 100%; height: 100%;
-    z-index: 5; pointer-events: none;
-
+    position: absolute; 
+    top: 0; 
+    left: 0;
+    width: 100%; 
+    height: 100%;
+    z-index: 5; 
+    pointer-events: none; /* 클릭 이벤트 통과 */
 }
 .label-3d {
     position: absolute;
-    font-size: 11px; font-weight: 600;
+    font-size: 11px; 
+    font-weight: 600;
     color: #334155;
     background: rgba(255, 255, 255, 0.9);
     border: 1px solid rgba(99, 102, 241, 0.3);
@@ -67,37 +108,55 @@ body, html {
     text-align: center;
     white-space: nowrap;
     box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    transform: translate(-50%, -100%);
+    transform: translate(-50%, -100%); /* 라벨의 기준점을 중앙 하단으로 이동 */
     transition: opacity 0.2s;
 }
 
-/* ===============================
-   상단 컨트롤 바
-   =============================== */
+/* ==============================================================================
+   4. 상단 글로벌 컨트롤 바 & GPU 상태 뱃지 (Top Control Bar & Badges)
+   ============================================================================== */
 #top-bar {
-    position: absolute; top: 0; left: 0; right: 0;
-    height: 52px; z-index: 20;
-    background: rgba(15, 23, 42, 0.88);
+    position: absolute; 
+    top: 0; 
+    left: 0; 
+    right: 0;
+    height: 52px; 
+    z-index: 20;
+    background: rgba(15, 23, 42, 0.88); /* 세련된 반투명 다크 바 */
     backdrop-filter: blur(14px);
     border-bottom: 1px solid rgba(99, 102, 241, 0.2);
-    display: flex; align-items: center;
+    display: flex; 
+    align-items: center;
     justify-content: space-between;
     padding: 0 16px;
     gap: 10px;
 }
-.top-bar-left { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-.top-bar-left h1 { font-size: 15px; font-weight: 700; color: #f1f5f9; white-space: nowrap; }
+.top-bar-left { 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    flex-shrink: 0; 
+}
+.top-bar-left h1 { 
+    font-size: 15px; 
+    font-weight: 700; 
+    color: #f1f5f9; 
+    white-space: nowrap; 
+}
 
+/* 데이터 로드 및 렌더링 상태 표시 뱃지 */
 .status {
-    font-size: 11px; font-weight: 600;
-    padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; 
+    font-weight: 600;
+    padding: 3px 10px; 
+    border-radius: 20px;
     white-space: nowrap;
 }
 .status.online { background: rgba(16,185,129,0.18); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
 .status.offline { background: rgba(100,116,139,0.2); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
 .status.loading { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
 
-/* GPU 엔진 뱃지 */
+/* GPU 가속 엔진 정보 확인 뱃지 */
 .gpu-badge {
     display: inline-flex;
     align-items: center;
@@ -145,18 +204,27 @@ body, html {
     50% { opacity: 0.4; transform: scale(0.85); }
 }
 
+/* 상단 우측 버튼 목록 */
 .top-bar-right {
-    display: flex; gap: 6px; align-items: center;
-    overflow-x: auto; max-width: calc(100vw - 220px);
+    display: flex; 
+    gap: 6px; 
+    align-items: center;
+    overflow-x: auto; 
+    max-width: calc(100vw - 220px);
     scrollbar-width: none;
 }
 .top-bar-right::-webkit-scrollbar { display: none; }
 .top-bar-right button {
     background: rgba(30, 41, 59, 0.85);
     border: 1px solid rgba(99, 102, 241, 0.25);
-    color: #cbd5e1; border-radius: 6px;
-    padding: 6px 10px; font-size: 11px; font-weight: 600;
-    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+    color: #cbd5e1; 
+    border-radius: 6px;
+    padding: 6px 10px; 
+    font-size: 11px; 
+    font-weight: 600;
+    cursor: pointer; 
+    transition: all 0.2s; 
+    white-space: nowrap;
 }
 .top-bar-right button:hover {
     background: rgba(99, 102, 241, 0.25);

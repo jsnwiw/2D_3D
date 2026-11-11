@@ -1,3 +1,39 @@
+/**
+ * ==============================================================================
+ * [main.js] 3D & 2D 인터랙티브 데이터 시각화 웹 플랫폼 메인 스크립트
+ * ==============================================================================
+ * 
+ * [시스템 개요]
+ * - WebGPU (Vulkan / Direct3D 12) 및 WebGL 2.0 하드웨어 가속 기반 실시간 3D 렌더링
+ * - 엑셀(.xlsx, .xls) 및 CSV 무변환 고속 파싱 (SheetJS & TextDecoder 바이너리 스니퍼)
+ * - 한국어 ANSI(EUC-KR / CP949) 및 표준 UTF-8 자동 감지 엔진 탑재
+ * - 1.5 × IQR(사분위수 범위) 기반 AI 통계 분석 및 이상치(Outlier) 자동 브리핑
+ * - 시계열 타임슬라이더 플레이어 (0~100세, 연도별 타임랩스 애니메이션)
+ * - 10종 3D 지오메트리 & 8종 2D Chart.js 양방향 레이캐스팅 동기화
+ * - 스튜디오급 정밀 3D 조명/환경 제어 및 A4 분석 보고서 인쇄 시스템
+ * 
+ * [아키텍처 목차 (Architecture Index)]
+ * 1. 차세대 그래픽스 엔진 (Vulkan / WebGPU) & Three.js 씬 초기화
+ * 2. 전역 상태 관리 (Global States)
+ * 3. DOM 엘리먼트 참조 캐싱
+ * 4. 카메라 제어 (부드러운 시점 보간 애니메이션 & 앵글 프리셋)
+ * 5. 대시보드 메뉴 & 아코디언 인터페이스
+ * 6. 메뉴 패널 스크롤 엔진 (마우스 휠 + 모바일 터치 제스처 + 키보드)
+ * 7. 3D 환경 및 조명 실시간 제어 (Ambient, Sunlight, Exposure, Fog, Shadow)
+ * 8. CSV/엑셀 파싱 및 다중 인코딩 디코더 (UTF-8, EUC-KR 자동 감지)
+ * 9. 스마트 통계 분석 및 AI 이상치 탐지 엔진
+ * 10. 지능형 추천 시각화 자동 적용 엔진
+ * 11. 인터랙티브 데이터 테이블 렌더링 & 양방향 선택 연동
+ * 12. 10종 3D 지오메트리 스타일 렌더러 (Cylinder, Pie, Tube, Scatter, Surface 등)
+ * 13. 3D 월드 좌표 ↔ 2D 화면 DOM 투영 동기화 (Vector3.project)
+ * 14. 3D 레이캐스팅 광선 추적 (Hover 발광 & Click 카메라 포커싱)
+ * 15. 선택 항목 상세 카드 & 비교 미니 차트 표출
+ * 16. Chart.js 2D 보조 차트 렌더러 & 다축 데이터 필터링/정렬 엔진
+ * 17. 이벤트 리스너, 파일 로더, 타임라인 플레이어 & A4 보고서 출력
+ * 18. 차세대 렌더 루프 및 실시간 60FPS 성능 모니터링
+ * ==============================================================================
+ */
+
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import WebGPURenderer from 'three/addons/renderers/webgpu/WebGPURenderer.js';
@@ -874,8 +910,21 @@ if (customColorCode) {
 }
 
 // ════════════════════════════════════════════════════════════
-// 6. CSV 파싱 및 한글/다중 인코딩 디코더 (UTF-8, EUC-KR / CP949 자동 감지)
+// 8. CSV 파싱 및 한글/다중 인코딩 디코더 (UTF-8, EUC-KR / CP949 자동 감지)
 // ════════════════════════════════════════════════════════════
+/**
+ * 바이너리 ArrayBuffer를 문자열로 디코딩 (한국어 엑셀 ANSI 자동 감지)
+ * 
+ * [동작 원리]
+ * 1) mode가 수동 지정인 경우 해당 디코더로 즉시 변환
+ * 2) mode가 'auto'인 경우:
+ *    - UTF-8 BOM(0xEF, 0xBB, 0xBF) 존재 여부 검사
+ *    - TextDecoder('utf-8', { fatal: true })로 strict 파싱 시도
+ *    - 한국어 엑셀(CP949/EUC-KR) 바이트가 포함되어 파싱 예외 발생 시 즉시 'euc-kr' 디코더로 폴백
+ * @param {ArrayBuffer} buffer - 파일 바이너리 버퍼
+ * @param {string} mode - 'auto' | 'euc-kr' | 'utf-8'
+ * @returns {string} 디코딩된 텍스트 문자열
+ */
 function decodeCSVBuffer(buffer, mode = 'auto') {
     const bytes = new Uint8Array(buffer);
 
@@ -895,7 +944,7 @@ function decodeCSVBuffer(buffer, mode = 'auto') {
     }
 
     // 3. 자동 감지 (mode === 'auto')
-    // UTF-8 BOM (0xEF, 0xBB, 0xBF) 확인
+    // UTF-8 BOM (0xEF, 0xBB, 0xBF) 확인 시 UTF-8로 즉시 디코딩
     if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
         return new TextDecoder('utf-8').decode(bytes);
     }
@@ -916,6 +965,13 @@ function decodeCSVBuffer(buffer, mode = 'auto') {
     }
 }
 
+/**
+ * CSV 텍스트 문자열을 2차원 행렬 객체로 파싱
+ * - 따옴표 안의 쉼표(,) 및 줄바꿈 이스케이프 지원
+ * - 빈 줄 제거 및 헤더/데이터 행 정규화
+ * @param {string} text - 원본 CSV 텍스트
+ * @returns {{ headers: string[], rows: string[][] } | null}
+ */
 function parseCSV(text) {
     if (!text) return null;
     // UTF-8 BOM(\uFEFF) 제거 및 줄바꿈 통일
@@ -949,8 +1005,13 @@ function parseCSV(text) {
 }
 
 // ════════════════════════════════════════════════════════════
-// 7. 데이터 분석 엔진
+// 9. 스마트 통계 분석 및 AI 이상치 탐지 엔진
 // ════════════════════════════════════════════════════════════
+/**
+ * 로드된 데이터셋을 다각도로 분석하여 컬럼 속성 분류, 기술 통계량, 추천 차트 도출
+ * @param {{ headers: string[], rows: string[][] }} data 
+ * @returns {Object} 종합 분석 결과 객체
+ */
 function analyzeData(data) {
     const { headers, rows } = data;
     const colCount = headers.length, rowCount = rows.length;
@@ -1343,9 +1404,14 @@ function renderDataTable(data, highlightRow = -1) {
 }
 
 // ════════════════════════════════════════════════════════════
-// 11. 3D 다양한 스타일 렌더러
+// 12. 10종 3D 지오메트리 스타일 렌더러 (Cylinder, Pie, Tube, Scatter, Surface 등)
 // ════════════════════════════════════════════════════════════
+/**
+ * 이전 렌더링된 모든 3D 오브젝트, 보조 라인/그리드, 텍스트 라벨을 씬에서 제거하고 GPU 메모리 해제(Dispose)
+ * - Three.js WebGL 메모리 누수(Memory Leak) 완전 방지
+ */
 function clearScene() {
+    // 1. 메인 데이터 메쉬 메모리 해제
     dataObjects.forEach(obj => {
         scene.remove(obj);
         if (obj.geometry) obj.geometry.dispose();
@@ -1356,6 +1422,7 @@ function clearScene() {
     });
     dataObjects = [];
 
+    // 2. 보조 시각화 요소(튜브 라인, 가이드 기둥, 지형 메쉬 등) 메모리 해제
     extraVisuals.forEach(obj => {
         scene.remove(obj);
         if (obj.geometry) obj.geometry.dispose();
@@ -1363,12 +1430,21 @@ function clearScene() {
     });
     extraVisuals = [];
 
+    // 3. 화면에 투영된 2D 텍스트 DOM 라벨 제거
     domLabels.forEach(l => l.el.remove());
     domLabels = [];
     selectedObject = null;
     hoveredObject = null;
 }
 
+/**
+ * 데이터의 분포, 시계열 여부, 범주 개수를 기반으로 최적의 3D 형태를 자동 추론
+ * - 시계열 데이터: 3D 입체 튜브 라인 (Line)
+ * - 소규모 범주(<=8): 3D 파이 슬라이스 (Pie)
+ * - 다수 범주(>=10): 3D 원기둥 막대 (Cylinder)
+ * - 연속 수치/지형: 3D 곡면 서피스 (Surface)
+ * @returns {string} 3D 스타일 식별자
+ */
 function inferBest3DStyle(labels, values, analysis) {
     if (!analysis) return 'box';
 
@@ -1933,16 +2009,21 @@ function addDomLabel(text, x, y, z) {
 }
 
 // ════════════════════════════════════════════════════════════
-// 12. 3D ↔ 2D 좌표 투영 동기화
+// 13. 3D ↔ 2D 좌표 투영 동기화 (Vector3.project)
 // ════════════════════════════════════════════════════════════
 const tempVec = new THREE.Vector3();
 
+/**
+ * 3D 월드 공간 좌표(Vector3)를 현재 카메라 시점에 맞춰 2D 화면 DOM 좌표(px)로 실시간 변환
+ * - 카메라가 회전하거나 줌인/아웃되어도 텍스트 라벨이 3D 오브젝트 위치를 오차 없이 추적
+ */
 function syncLabelsToScreen() {
     const hw = window.innerWidth / 2;
     const hh = window.innerHeight / 2;
 
     domLabels.forEach(({ el, worldPos }) => {
         tempVec.copy(worldPos).project(camera);
+        // 카메라 뒤편에 위치한 경우 투명 처리
         if (tempVec.z > 1) { el.style.opacity = '0'; return; }
         el.style.left = (tempVec.x * hw + hw) + 'px';
         el.style.top = (-tempVec.y * hh + hh) + 'px';
@@ -1950,6 +2031,9 @@ function syncLabelsToScreen() {
     });
 }
 
+/**
+ * 마우스 포인터 위치에 3D 메쉬 데이터 툴팁 표출
+ */
 function showTooltipAt(obj, screenX, screenY) {
     const ud = obj.userData;
     tooltipName.textContent = ud.name;
@@ -1961,11 +2045,15 @@ function showTooltipAt(obj, screenX, screenY) {
 function hideTooltip() { hoverTooltip.style.display = 'none'; }
 
 // ════════════════════════════════════════════════════════════
-// 13. 레이캐스팅 (호버 & 클릭)
+// 14. 3D 레이캐스팅 광선 추적 (Hover 발광 & Click 카메라 포커싱)
 // ════════════════════════════════════════════════════════════
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
+/**
+ * 마우스/터치 포인터 이동 시 3D 공간으로 광선을 투사(Raycasting)하여 호버 개체 감지
+ * - 호버된 메쉬: 1.08배 스케일업 확대 및 발광(Emissive) 효과
+ */
 function onPointerMove(event) {
     if (!dataObjects.length) return;
     const rect = renderer.domElement.getBoundingClientRect();
@@ -2267,8 +2355,14 @@ function applyVisualization() {
 }
 
 // ════════════════════════════════════════════════════════════
-// 16. 이벤트 리스너 & 파일 로더 (CSV 및 엑셀 .xlsx, .xls 완벽 지원)
+// 17. 이벤트 리스너 & 파일 로더 (CSV 및 엑셀 .xlsx, .xls 완벽 지원)
 // ════════════════════════════════════════════════════════════
+/**
+ * 로컬 파일(CSV 또는 엑셀 .xlsx, .xls)을 ArrayBuffer로 읽어들여 파싱 및 시각화 파이프라인 구동
+ * - SheetJS(XLSX) 라이브러리를 통한 첫 번째 시트 자동 변환
+ * - CSV의 경우 decodeCSVBuffer(EUC-KR/UTF-8 자동 감지)를 통한 무변환 디코딩
+ * @param {File} file - 업로드된 File 객체
+ */
 function loadAndParseCSVFile(file) {
     if (!file) return;
     currentUploadedFile = file;
@@ -2286,6 +2380,7 @@ function loadAndParseCSVFile(file) {
             let text = '';
             let sheetInfo = '';
 
+            // 1. 엑셀 파일인 경우 SheetJS를 사용하여 CSV 문자열로 메모리상 즉시 변환
             if (isExcel && window.XLSX) {
                 const workbook = window.XLSX.read(buffer, { type: 'array' });
                 const sheetName = workbook.SheetNames[0];
@@ -2294,6 +2389,7 @@ function loadAndParseCSVFile(file) {
                 sheetInfo = ` [시트: ${sheetName}]`;
                 showToast(`📊 엑셀 파일 로드 완료: <strong>${file.name}</strong> (${sheetName} 시트)`);
             } else {
+                // 2. CSV 파일인 경우 한글 인코딩 자동 감지 디코더 사용
                 text = decodeCSVBuffer(buffer, encodingMode);
             }
 
@@ -2474,12 +2570,37 @@ function animate() {
         obj.scale.z += (targetScale - obj.scale.z) * 5 * dt;
     });
 
+// ════════════════════════════════════════════════════════════
+// 18. 차세대 렌더 루프 (requestAnimationFrame) 및 실시간 60FPS 성능 모니터링
+// ════════════════════════════════════════════════════════════
+/**
+ * 매 프레임마다 실행되는 Three.js 메인 렌더 루프
+ * - 마우스 호버 스케일업 애니메이션 부드러운 보간 (Lerp)
+ * - OrbitControls 카메라 감쇠 업데이트
+ * - 3D ↔ 2D 라벨 투영 좌표 동기화 (syncLabelsToScreen)
+ * - 실시간 FPS 프레임레이트 및 Frame Time(ms) 측정
+ */
+function animate() {
+    const frameStartTime = performance.now();
+    requestAnimationFrame(animate);
+
+    const dt = clock.getDelta();
+
+    // 호버된 개체의 부드러운 스케일업 애니메이션 (Lerp 보간)
+    dataObjects.forEach(obj => {
+        const isHovered = (obj === hoveredObject);
+        const targetScale = isHovered ? 1.08 : 1.0;
+        obj.scale.x += (targetScale - obj.scale.x) * 5 * dt;
+        obj.scale.y += (targetScale - obj.scale.y) * 5 * dt;
+        obj.scale.z += (targetScale - obj.scale.z) * 5 * dt;
+    });
+
     updateCameraAnim();
     controls.update();
     syncLabelsToScreen();
     renderer.render(scene, camera);
 
-    // 실시간 FPS 및 렌더링 지연시간(ms) 측정
+    // 실시간 FPS 및 렌더링 지연시간(ms) 측정 (1초 간격 갱신)
     frameCount++;
     const now = performance.now();
     const elapsed = now - lastFpsTime;
@@ -2495,15 +2616,18 @@ function animate() {
     }
 }
 
+// 윈도우 창 크기 변경 시 카메라 비율 및 렌더러 해상도 자동 동기화
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// 모바일 터치 디바이스 레이캐스팅 터치 지원
 renderer.domElement.addEventListener('touchstart', e => {
     const t = e.touches[0];
     onPointerMove({ clientX: t.clientX, clientY: t.clientY });
 }, { passive: true });
 
+// 렌더링 엔진 루프 최초 시작
 animate();
