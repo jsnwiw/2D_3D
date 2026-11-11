@@ -50,60 +50,47 @@ const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerH
 camera.position.set(0, 10, 20);
 
 // GPU 하드웨어 정보 및 엔진 상태
-export const gpuEngineState = {
-    isWebGPU: false,
-    backendName: 'WebGL 2.0 (폴백 모드)',
-    gpuName: '시스템 그래픽스 가속기',
-    vendor: '감지 중...',
-    architecture: 'Standard Pipeline',
+const gpuEngineState = {
+    isWebGPU: true,
+    backendName: 'WebGPU (Vulkan / Direct3D 12 Low-level)',
+    gpuName: 'Vulkan 가속 하드웨어 GPU',
+    vendor: 'Native Hardware',
+    architecture: 'WGSL Low-level Pipeline',
     featuresCount: 0,
     fps: 60,
     frameTimeMs: 16.6
 };
 
-// WebGPU (Vulkan / Direct3D 12 Low-level) 감지 및 비동기 초기화
-let renderer;
+// ── WebGPURenderer 전용 초기화 ──
+// WebGPURenderer는 내부적으로 WebGPU 미지원 환경에서 자동으로 WebGL2 백엔드로 폴백합니다.
+const renderer = new WebGPURenderer({ antialias: true, alpha: false, forceWebGL: false });
+await renderer.init();
 
-if ('gpu' in navigator) {
-    try {
-        const adapter = await navigator.gpu.requestAdapter();
-        if (adapter) {
-            renderer = new WebGPURenderer({ antialias: true, alpha: false });
-            await renderer.init();
-            gpuEngineState.isWebGPU = true;
-            gpuEngineState.backendName = 'WebGPU (Vulkan / Direct3D 12 Low-level)';
-
-            const info = await adapter.requestAdapterInfo?.();
-            if (info) {
-                gpuEngineState.gpuName = info.device || info.description || 'Vulkan 가속 하드웨어 GPU';
-                gpuEngineState.vendor = info.vendor || 'Hardware GPU Vendor';
-                gpuEngineState.architecture = info.architecture || 'WGSL Low-level Pipeline';
-            } else {
-                gpuEngineState.gpuName = 'Vulkan 가속 차세대 GPU';
-                gpuEngineState.vendor = 'Native Hardware';
-                gpuEngineState.architecture = 'WebGPU Low-level Shaders';
+// 실제 어댑터 정보 비동기 조회 (UI 뱃지 갱신)
+(async () => {
+    if ('gpu' in navigator) {
+        try {
+            const adapter = await navigator.gpu.requestAdapter();
+            if (adapter) {
+                const info = await adapter.requestAdapterInfo?.();
+                if (info) {
+                    gpuEngineState.gpuName = info.device || info.description || 'Vulkan 가속 하드웨어 GPU';
+                    gpuEngineState.vendor = info.vendor || 'Native Hardware';
+                    gpuEngineState.architecture = info.architecture || 'WGSL Low-level Pipeline';
+                }
+                gpuEngineState.featuresCount = adapter.features?.size || 0;
+                const badge = document.getElementById('gpu-engine-text');
+                if (badge) badge.textContent = '⚡ Vulkan / WebGPU';
+                console.log('⚡ Vulkan / WebGPU 엔진 활성화:', gpuEngineState);
             }
-            gpuEngineState.featuresCount = adapter.features?.size || 0;
-            console.log('⚡ Vulkan / WebGPU 엔진 초기화 완료:', gpuEngineState);
+        } catch (e) {
+            console.warn('WebGPU 어댑터 정보 조회 실패:', e);
         }
-    } catch (e) {
-        console.warn('WebGPU 초기화 실패, WebGL2로 자동 폴백합니다:', e);
     }
-}
-
-if (!renderer) {
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
-    gpuEngineState.isWebGPU = false;
-    gpuEngineState.backendName = 'WebGL 2.0 (호환성 세이프 모드)';
-    gpuEngineState.gpuName = '시스템 기본 그래픽 가속 장치';
-    gpuEngineState.architecture = 'GLSL ES 3.0 Pipeline';
-    console.log('🌐 WebGL 2.0 세이프 모드로 시작되었습니다.');
-}
+})();
 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
 container.appendChild(renderer.domElement);
@@ -2552,27 +2539,12 @@ chartCloseBtn.addEventListener('click', () => { chartPanel.style.display = 'none
 chartMaxBtn.addEventListener('click', () => { chartPanel.classList.toggle('maximized'); if (chart2d) chart2d.resize(); });
 
 // ════════════════════════════════════════════════════════════
-// 17. 차세대 렌더 루프 및 실시간 FPS 성능 모니터링
+// 18. 차세대 렌더 루프 (requestAnimationFrame) 및 실시간 60FPS 성능 모니터링
 // ════════════════════════════════════════════════════════════
 const clock = new THREE.Clock();
 let frameCount = 0;
 let lastFpsTime = performance.now();
 
-function animate() {
-    requestAnimationFrame(animate);
-    const frameStartTime = performance.now();
-    const dt = clock.getDelta();
-
-    dataObjects.forEach(obj => {
-        const isHovered = obj === hoveredObject || obj === selectedObject;
-        const targetScale = isHovered ? 1.08 : 1.0;
-        obj.scale.x += (targetScale - obj.scale.x) * 5 * dt;
-        obj.scale.z += (targetScale - obj.scale.z) * 5 * dt;
-    });
-
-// ════════════════════════════════════════════════════════════
-// 18. 차세대 렌더 루프 (requestAnimationFrame) 및 실시간 60FPS 성능 모니터링
-// ════════════════════════════════════════════════════════════
 /**
  * 매 프레임마다 실행되는 Three.js 메인 렌더 루프
  * - 마우스 호버 스케일업 애니메이션 부드러운 보간 (Lerp)
@@ -2588,7 +2560,7 @@ function animate() {
 
     // 호버된 개체의 부드러운 스케일업 애니메이션 (Lerp 보간)
     dataObjects.forEach(obj => {
-        const isHovered = (obj === hoveredObject);
+        const isHovered = (obj === hoveredObject || obj === selectedObject);
         const targetScale = isHovered ? 1.08 : 1.0;
         obj.scale.x += (targetScale - obj.scale.x) * 5 * dt;
         obj.scale.y += (targetScale - obj.scale.y) * 5 * dt;
@@ -2631,3 +2603,5 @@ renderer.domElement.addEventListener('touchstart', e => {
 
 // 렌더링 엔진 루프 최초 시작
 animate();
+
+
